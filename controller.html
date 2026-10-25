@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>4WD RC 遙控器</title>
+<style>
+:root{--bg:#0b0f14;--pn:#131a23;--pn2:#1b2431;--ln:#2a3548;--tx:#eaf0f7;--mu:#8b98a9;
+--ac:#2f8cff;--ok:#22c55e;--am:#f59e0b;--er:#ef4444;--fs:min(3.4vh,1.7vw)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:none}
+html{font-size:var(--fs)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);overflow:hidden;overscroll-behavior:none;
+font-family:system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+button{font:inherit;color:var(--tx);background:var(--pn2);border:1px solid var(--ln);border-radius:12px;font-weight:600;
+touch-action:manipulation;padding:0;cursor:pointer}
+button:active{filter:brightness(1.25)}
+#app{position:fixed;inset:0;display:grid;grid-template-columns:13.5fr 47.5fr 39fr;gap:8px;
+padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:14px}
+small{font-weight:500;color:var(--mu)}
+
+/* ===== 左: 定速鎖 + 油門 ===== */
+#lock{height:max(48px,4.2rem);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;line-height:1.2;font-size:.95rem;border-radius:14px;touch-action:none}
+#lock small{font-size:.7rem}
+#lock.ready{border:2px solid var(--am);color:#fcd34d;background:#2a1d08}
+#thr.lk{border-color:var(--am);box-shadow:0 0 0 1px var(--am) inset}
+#lock.on{background:var(--am);border-color:var(--am);color:#1b1200}
+#lock.on small{color:#4a3200}
+#thr{flex:1;position:relative;overflow:hidden;min-height:0}
+#thr .zone{position:absolute;left:0;right:0}
+#thrFill{position:absolute;left:0;right:0}
+.tk{position:absolute;right:6px;font-size:.78rem;color:var(--mu);transform:translateY(-50%);pointer-events:none}
+.tl{position:absolute;left:0;right:0;height:1px;background:#ffffff22;pointer-events:none}
+#thrN{position:absolute;left:0;right:0;height:2px;background:#fff9;pointer-events:none}
+#thrNL{position:absolute;left:8px;font-size:.8rem;color:#fff;transform:translateY(-120%);pointer-events:none;font-weight:700}
+#thrR{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:.85rem;color:#fca5a5;pointer-events:none;font-weight:700}
+#thrF{position:absolute;left:10px;top:6px;text-align:left;font-size:.85rem;color:#86efac;pointer-events:none;font-weight:700}
+#thrHint{position:absolute;left:6px;right:6px;display:none;background:#f59e0b;color:#1b1200;border-radius:8px;padding:3px 2px;font-size:.72rem;font-weight:800;text-align:center;line-height:1.25;pointer-events:none;z-index:3}
+#thrThumb{position:absolute;left:8px;right:8px;height:max(46px,4.4rem);transform:translateY(-50%);border-radius:12px;
+background:linear-gradient(#f3f6fa,#cfd8e3);border:2px solid #fff;box-shadow:0 3px 10px #000a;display:flex;align-items:center;justify-content:center;
+font-size:1.5rem;font-weight:800;color:#0b0f14;pointer-events:none;font-variant-numeric:tabular-nums}
+#thrThumb.lk{background:linear-gradient(#fbbf24,#d98e04);border-color:#ffe3a1}
+
+/* ===== 中: 狀態 + 車況 ===== */
+#bar{display:flex;align-items:center;gap:8px;height:max(46px,3.6rem)}
+#st{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:.9rem;font-weight:600;white-space:nowrap}
+#stl{display:flex;align-items:center;gap:6px}
+#bat{font-size:.74rem;font-weight:700;color:var(--mu);font-variant-numeric:tabular-nums}#bat.g{color:#4ade80}#bat.a{color:#fbbf24}#bat.r{color:#f87171;animation:bl 1s steps(2) infinite}@keyframes bl{50%{opacity:.35}}
+#dot{width:.9rem;height:.9rem;border-radius:50%;background:var(--er);flex:none}
+#spdBox{flex:1;text-align:center;line-height:1;white-space:nowrap}
+#spd{font-size:2.5rem;font-weight:800;font-variant-numeric:tabular-nums}
+#spdBox small{font-size:.85rem;margin-left:3px}
+#gear{width:max(46px,3.6rem);height:100%;font-size:1.5rem}
+#media{flex:1;min-height:0;display:flex;gap:8px}
+#carBox{flex:0 0 35%;min-width:0;min-height:0;display:flex;position:relative}
+#flip{position:absolute;left:50%;top:calc(50% + 9%);transform:translate(-50%,-50%);width:max(44px,3.4rem);height:max(46px,3.6rem);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.1;font-size:.62rem;border-radius:11px;background:#243246;border:1px solid #4a5d79;z-index:2}
+#flip span{font-size:1.1rem;line-height:1}
+#flip b{font-size:.72rem}
+#flip.on{background:var(--ac);border-color:#9cc9ff;color:#fff;box-shadow:0 0 14px #2f8cff88}
+#car{width:100%;height:100%}
+#camBox{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+#camView{flex:1;min-height:0;position:relative;background:#05080c}
+#cam{width:100%;height:100%;object-fit:contain;display:block}
+#camMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mu);font-size:.85rem;padding:6px;line-height:1.4;pointer-events:none}
+#camBadge{position:absolute;left:6px;top:6px;background:#000b;border-radius:8px;padding:2px 7px;font-size:.7rem;font-weight:700;pointer-events:none}
+#camStrip{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:4px 6px;height:auto;border-top:1px solid var(--ln);background:#0e141c}
+#camSeg{flex:none;height:max(30px,2.4rem);padding:2px;gap:2px;border-radius:11px}
+#camSeg button{flex:1;padding:0;font-size:.8rem;border-radius:9px;line-height:1.1;white-space:nowrap}
+#camSeg button#cq0.on{background:#475569;box-shadow:none}
+#camInfo{flex:none;text-align:center;font-size:.66rem;color:var(--mu);line-height:1.35;min-width:0;white-space:nowrap;overflow:hidden}
+#camInfo b{font-weight:700}#camInfo .g{color:#4ade80}#camInfo .a{color:#fbbf24}#camInfo .r{color:#f87171}#camInfo .n{color:var(--mu)}
+#camMsg{flex-direction:column;gap:.25rem;background:repeating-linear-gradient(135deg,#0a1017 0 12px,#0d1520 12px 24px)}
+#camMsg.over{background:rgba(5,8,12,.78)}
+#camMsg .ci{font-size:2.1rem;line-height:1}
+#camMsg b{font-size:1rem;color:var(--tx)}#camMsg span{font-size:.74rem;color:var(--mu);max-width:92%}
+#camMsg.bad b{color:#fbbf24}#camMsg.off b{color:#94a3b8}
+#lat{width:100%;border-collapse:collapse;font-size:.9rem}
+#lat td{padding:.32rem .4rem;border-bottom:1px solid var(--ln)}#lat td:first-child{color:var(--mu)}#lat td:first-child small{display:block;font-size:.7rem;opacity:.8}
+#lat td.v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+#lat .g{color:#4ade80}#lat .a{color:#fbbf24}#lat .r{color:#f87171}#lat .n{color:var(--mu)}
+/* ===== 賽車遊戲模式 (收到 G,1 後啟用) ===== */
+#gdata,#autoBtn{display:none}
+body.game #gdata{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;gap:.5rem;padding:.6rem .7rem;justify-content:space-between}
+body.game #carBox,body.game #camBox,body.game #tC,body.game #bat{display:none}
+body.game #autoBtn{display:block;height:100%;padding:0 .9rem;font-size:.95rem;white-space:nowrap}
+#autoBtn.on{background:var(--am);border-color:var(--am);color:#1b1200}
+#gdata .g1{display:flex;align-items:center;gap:.8rem}#gdata .gg{text-align:center;min-width:3.4rem}#gdata .gg b{font-size:2.6rem;line-height:1;display:block}
+#gdata .gr{flex:1;min-width:0}#gdata .rbar{height:.9rem;background:#ffffff14;border-radius:6px;overflow:hidden}#gdata .rbar u{display:block;height:100%;width:0;background:#22c55e;text-decoration:none}#gdata .rbar u.red{background:#ef4444}
+#gdata .gr span{font-size:.8rem;color:var(--mu)}#gdata .gr span b{font-size:1.05rem;color:var(--tx);font-variant-numeric:tabular-nums}
+#gdata .g2{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.3rem .5rem;align-items:center;font-size:.8rem;color:var(--mu)}
+#gdata .g2 i{height:.7rem;background:#ffffff14;border-radius:5px;overflow:hidden;display:block}#gdata .g2 u{display:block;height:100%;width:0;text-decoration:none;background:#22c55e}#gdata .g2 u.b{background:#ef4444}
+#gdata .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem}#gdata .g3 div{background:#ffffff0a;border-radius:8px;padding:.25rem .4rem;text-align:center}
+#gdata .g3 small{display:block;font-size:.66rem}#gdata .g3 b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+#gState{text-align:center;font-size:.8rem;color:var(--mu)}
+#tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.tile{padding:5px 2px;text-align:center;line-height:1.2;min-width:0}
+.tile small{display:block;font-size:.7rem}
+.tile b{font-size:min(1.05rem,2.7vw);white-space:nowrap;font-variant-numeric:tabular-nums}
+#tB{font-size:min(.95rem,2.4vw)}
+.bk0{color:#86efac}.bk1{color:#93c5fd}.bk2{color:#fca5a5}.bk3{color:#fdba74}
+#warn{height:max(32px,2.6rem);display:flex;align-items:center;justify-content:center;border-radius:10px;font-weight:700;font-size:.95rem;
+background:#0f2a1a;color:#86efac;border:1px solid #14532d;text-align:center}
+#warn.bad{background:#3a0f0f;color:#fecaca;border-color:#7f1d1d}
+#warn.wn{background:#33260a;color:#fde68a;border-color:#78560e}
+
+/* ===== 右: 模式 + 參數 + 方向 ===== */
+#row1{display:flex;gap:8px;height:max(50px,4.3rem)}
+.seg{display:flex;background:#0e141c;border:1px solid var(--ln);border-radius:14px;padding:3px;gap:3px;flex:1.15}
+.seg button{flex:1;border:0;border-radius:11px;background:transparent;color:var(--mu);font-size:1.05rem;line-height:1.3}
+.seg button small{display:block;font-size:.72rem;color:inherit;opacity:.8}
+.seg button.on{background:var(--ac);color:#fff;box-shadow:0 2px 8px #2f8cff55}
+#opp{flex:1;border:2px solid var(--am);background:#2a1d08;color:#fcd34d;font-size:1.05rem;line-height:1.3;border-radius:14px}
+#opp small{display:block;font-size:.72rem;color:#d4a24a}
+#opp.on{background:var(--am);color:#1b1200;box-shadow:0 0 18px #f59e0baa}
+#opp.on small{color:#4a3200}
+#opp[hidden]{display:none}
+.param{padding:6px 8px 7px}
+.ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;font-size:.92rem;font-weight:600}
+.ph b{font-size:1.2rem;font-variant-numeric:tabular-nums}
+.pc{display:flex;align-items:center;gap:8px}
+.stb{width:max(40px,3.1rem);height:max(38px,2.9rem);font-size:1.5rem;line-height:1;flex:none;border-radius:11px}
+.sl{position:relative;flex:1;height:max(38px,2.9rem);display:flex;align-items:center;margin:0 .9rem}
+.sl .tr{position:absolute;left:0;right:0;height:.8rem;border-radius:99px;background:#0e141c;border:1px solid var(--ln);overflow:hidden}
+.sl .sf{position:absolute;left:0;top:0;bottom:0;background:var(--ac)}
+.sl .sd{position:absolute;top:50%;width:2px;height:1.5rem;margin-top:-.75rem;background:#ffffff66}
+.sl .sk{position:absolute;top:50%;width:1.9rem;height:1.9rem;margin:-.95rem 0 0 -.95rem;border-radius:50%;background:#fff;border:3px solid var(--ac);box-shadow:0 2px 6px #000a}
+.pmm{display:flex;justify-content:space-between;font-size:.7rem;color:var(--mu);margin:-2px 3.6rem 0}
+#steer{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 8px 8px}
+#steerV{font-variant-numeric:tabular-nums}
+#sTrack{flex:1;position:relative;min-height:0;background:#0e141c;border:1px solid var(--ln);border-radius:16px;overflow:hidden}
+#sFill{position:absolute;top:0;bottom:0;background:#1d4f94}
+.sTk{position:absolute;top:0;bottom:0;width:1px;background:#ffffff1f;pointer-events:none}
+#sC{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff9;pointer-events:none}
+.sLab{position:absolute;top:6px;font-size:.85rem;color:var(--mu);font-weight:700;pointer-events:none}
+#sThumb{position:absolute;top:10%;bottom:10%;width:max(64px,6.5rem);transform:translateX(-50%);border-radius:14px;
+background:linear-gradient(#f3f6fa,#cfd8e3);border:2px solid #fff;box-shadow:0 3px 10px #000a;display:flex;align-items:center;justify-content:center;
+font-size:1.35rem;font-weight:800;color:#0b0f14;pointer-events:none;font-variant-numeric:tabular-nums}
+
+/* ===== 設定視窗 ===== */
+#modal{position:fixed;inset:0;display:none;background:#000b;z-index:50;align-items:center;justify-content:center}
+#modal.show{display:flex}
+#sheet{width:min(760px,94vw);max-height:92vh;overflow-y:auto;overflow-x:hidden;padding:10px 14px 14px;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* 全域 * 設了 touch-action:none，會讓設定頁的子元素吃掉滑動手勢 → 設定頁內一律允許垂直滑動 */
+#sheet *{touch-action:pan-y}
+#sheet button,#sheet .sw{touch-action:manipulation}
+#sheet h2{margin:0;font-size:1.25rem}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+#x{width:max(44px,3.4rem);height:max(40px,3rem);font-size:1.4rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+.row{display:flex;align-items:center;gap:8px;min-height:max(52px,4rem);border-bottom:1px solid #ffffff12}
+.row>label{width:5.6rem;flex:none;font-size:.95rem;font-weight:600;color:#c7d1de;line-height:1.2}
+.row>label small{display:block;font-size:.72rem}
+.row .seg{flex:1;padding:2px}
+.row .seg button{padding:.6rem 0;font-size:.95rem}
+.stp{display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end}
+.stp b{min-width:4.2rem;text-align:center;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.sw{flex:1;height:max(42px,3.2rem);border-radius:12px;font-size:1rem}
+.sw.on{background:#14532d;border-color:var(--ok);color:#bbf7d0}
+.sw.off{background:#4c1010;border-color:var(--er);color:#fecaca}
+.wide{flex:1;height:max(42px,3.2rem);font-size:.95rem}
+/* 設定: 分頁 + 模式參數表 */
+.tabs{display:flex;gap:4px;background:#0e141c;border:1px solid var(--ln);border-radius:12px;padding:3px}
+.tabs button{border:0;background:transparent;color:var(--mu);padding:.5rem 1.2rem;border-radius:9px;font-size:1rem}
+.tabs button.on{background:var(--ac);color:#fff}
+.pane{display:none}.pane.show{display:block}
+#paneC .note{font-size:.78rem;color:var(--mu);line-height:1.5;margin:6px 2px 0}
+#mt{width:100%;border-collapse:separate;border-spacing:0}
+#mt th{font-size:1rem;padding:.45rem;color:var(--mu);border-radius:10px 10px 0 0}
+#mt td{padding:.3rem .2rem;text-align:center;border-bottom:1px solid #ffffff12}
+#mt th.cur{background:#1d4f94;color:#fff}
+#mt td.cur{background:#122238}
+#mt td.lab{text-align:left;font-size:.92rem;font-weight:600;color:#c7d1de;width:7.6rem;line-height:1.2;background:none}
+#mt td.lab small{display:block;font-size:.7rem}
+.ms{display:flex;align-items:center;justify-content:center;gap:3px}
+.ms button{width:max(34px,2.6rem);height:max(38px,2.9rem);font-size:1.2rem;border-radius:9px}
+.ms b{min-width:3rem;font-size:1.05rem;font-variant-numeric:tabular-nums}
+#rot{display:none;position:fixed;inset:0;background:var(--bg);z-index:99;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-size:7vw;text-align:center}
+@media (orientation:portrait){#rot{display:flex}}
+
+/* ===== 配對畫面 (WebRTC 版新增) ===== */
+#pair{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(7,10,14,.94);padding:16px}
+#pair .pc{width:min(420px,100%);background:var(--pn);border:1px solid var(--ln);border-radius:16px;padding:20px;text-align:center}
+#pair h2{margin:0 0 8px;font-size:20px}
+#pair p{margin:0 0 14px;color:var(--mu);font-size:14px;line-height:1.5;min-height:42px}
+#pair p.bad{color:#fca5a5}
+#pair input{width:100%;font:700 26px ui-monospace,Consolas,monospace;letter-spacing:.2em;text-align:center;text-transform:lowercase;color:var(--tx);background:var(--pn2);border:1px solid var(--ln);border-radius:12px;padding:10px;-webkit-user-select:text;user-select:text;touch-action:manipulation}
+#pair button{width:100%;margin-top:12px;padding:12px;font-size:17px;background:var(--ac);border-color:var(--ac);color:#fff}
+#pair a{display:inline-block;margin-top:14px;color:var(--mu);font-size:13px}
+</style></head><body>
+<div id="rot"><div style="font-size:18vw">📱↻</div><div>請把手機橫放</div></div>
+
+<div id="app">
+  <!-- 左 -->
+  <section class="col">
+    <button id="lock"></button>
+    <div id="thr" class="card"></div>
+  </section>
+
+  <!-- 中 -->
+  <section class="col">
+    <div id="bar">
+      <div id="st"><div id="stl"><span id="dot"></span><span id="link">連線中…</span></div><div id="bat">🔋 --</div></div>
+      <div id="spdBox"><span id="spd">0.0</span><small>km/h</small></div>
+      <button id="autoBtn" aria-label="自動駕駛">🤖 自動駕駛</button>
+      <button id="gear" aria-label="設定">⚙</button>
+    </div>
+    <div id="media">
+      <div id="gdata" class="card">
+        <div class="g1"><div class="gg"><b id="gGear">N</b><small>檔位</small></div>
+          <div class="gr"><div class="rbar"><u id="gRpmF"></u></div><span><b id="gRpm">0</b> rpm</span></div></div>
+        <div class="g2"><span>油門</span><i><u id="gThr" class="t"></u></i><span>煞車</span><i><u id="gBrk" class="b"></u></i></div>
+        <div class="g3">
+          <div><small>橫向 G</small><b id="gLat">0.00</b></div><div><small>縱向 G</small><b id="gLon">0.00</b></div><div><small>圈數</small><b id="gLap">—</b></div>
+          <div><small>本圈</small><b id="gLapT">—</b></div><div><small>上一圈</small><b id="gLast">—</b></div><div><small>最佳</small><b id="gBest">—</b></div>
+        </div>
+        <div id="gState">—</div>
+      </div>
+      <div id="carBox" class="card"><svg id="car" viewBox="0 0 150 220" preserveAspectRatio="xMidYMid meet"></svg>
+        <button id="flip"><span>⇅</span>車頭方向<b>正向</b></button></div>
+      <div id="camBox" class="card">
+        <div id="camView"><canvas id="cam" width="320" height="240"></canvas><div id="camMsg"><div class="ci"></div><b></b><span></span></div><div id="camBadge"></div></div>
+        <div id="camStrip"><div class="seg" id="camSeg"><button id="cq0">關</button><button id="cq1">流暢</button><button id="cq2">標準</button><button id="cq3">高畫質</button></div><div id="camInfo"></div></div>
+      </div>
+    </div>
+    <div id="tiles">
+      <div class="tile card"><small>油門</small><b id="tT">0%</b></div>
+      <div class="tile card"><small>實際輸出</small><b id="tL">0%</b></div>
+      <div class="tile card"><small>方向</small><b id="tS">中</b></div>
+      <div class="tile card"><small>模式</small><b id="tM">直線</b></div>
+      <div class="tile card"><small>輪子狀態</small><b id="tB">--</b></div>
+    </div>
+    <div id="warn">● 系統正常</div>
+  </section>
+
+  <!-- 右 -->
+  <section class="col">
+    <div id="row1">
+      <div class="seg" id="modeSeg">
+        <button id="m0">直線<small>穩定高速</small></button>
+        <button id="m1">普通<small>日常均衡</small></button>
+        <button id="m2">過彎<small>靈活轉向</small></button>
+      </div>
+      <button id="opp" hidden></button>
+    </div>
+    <div id="pSens" class="param card"></div>
+    <div id="steer" class="card">
+      <div class="ph"><span>方向</span><b id="steerV">中立</b></div>
+      <div id="sTrack">
+        <div id="sFill"></div><div id="sC"></div>
+        <span class="sLab" style="left:10px">◀ 左</span><span class="sLab" style="right:10px">右 ▶</span>
+        <div id="sThumb">0</div>
+      </div>
+    </div>
+    <div id="pLim" class="param card"></div>
+  </section>
+</div>
+
+<!-- 設定 -->
+<div id="modal"><div id="sheet" class="card">
+  <div class="sh"><div class="tabs"><button id="tA" class="on">一般設定</button><button id="tB2">模式參數</button><button id="tC">鏡頭</button><button id="tD">連線</button></div><button id="x">✕</button></div>
+  <div id="paneA" class="pane show">
+    <div class="grid2">
+      <div class="row"><label>驅動模式</label>
+        <div class="seg"><button id="d0">四驅</button><button id="d1">前驅</button><button id="d2">後驅</button></div></div>
+      <div class="row"><label>倒車上限<small>拉桿最下方</small></label>
+        <div class="stp"><button class="stb" data-k="rev" data-d="-1">−</button><b id="v_rev"></b><button class="stb" data-k="rev" data-d="1">＋</button></div></div>
+      <div class="row"><label>障礙偵測<small>超音波避障</small></label>
+        <button id="ao" class="sw"></button></div>
+      <div class="row"><label>倒車鎖定保護<small id="rlSm">同一次按壓不跨 0% 換方向</small></label>
+        <button id="rl" class="sw"></button></div>
+      <div class="row"><label>方向死區<small>中心不動範圍</small></label>
+        <div class="stp"><button class="stb" data-k="dz" data-d="-1">−</button><b id="v_dz"></b><button class="stb" data-k="dz" data-d="1">＋</button></div></div>
+      <div class="row"><label>直線微調<small>＋往右 −往左</small></label>
+        <div class="stp"><button class="stb" data-k="bal" data-d="-1">−</button><b id="v_bal"></b><button class="stb" data-k="bal" data-d="1">＋</button></div></div>
+      <div class="row"><label>右上切換鈕<small>直線⇄過彎</small></label>
+        <div class="seg"><button id="h0">點一下切換</button><button id="h1">按住才切</button></div></div>
+    </div>
+    <div class="row" style="border:0"><label>其他</label>
+      <button id="bz" class="wide">微調歸零</button><button id="fs" class="wide">全螢幕</button><button id="rst" class="wide">恢復一般預設</button></div>
+  </div>
+  <div id="paneB" class="pane">
+    <table id="mt"></table>
+    <div class="row" style="border:0"><label style="width:auto;flex:1;font-weight:500;font-size:.8rem;color:var(--mu)">藍色欄＝目前使用中的模式。主畫面兩個滑桿調整的是「固定模式」那一欄；內輪最低速＝轉彎時內側輪速占外側的最低比例，越小轉得越緊。</label>
+      <button id="mrst" class="wide" style="flex:none;width:11rem">三種模式還原預設</button></div>
+  </div>
+  <div id="paneC" class="pane">
+    <div class="grid2">
+      <div class="row"><label>鏡頭顯示</label><button id="camSw" class="sw"></button></div>
+      <div class="row"><label>畫質預設</label>
+        <div class="seg"><button id="c0">流暢</button><button id="c1">標準</button><button id="c2">高畫質</button></div></div>
+      <div class="row"><label>解析度<small>越大越吃頻寬</small></label>
+        <div class="seg"><button id="r0">320×240</button><button id="r1">640×480</button></div></div>
+      <div class="row"><label>JPEG 品質<small>越高越清楚</small></label>
+        <div class="stp"><button class="stb" data-k="camQ" data-d="-1">−</button><b id="v_camQ"></b><button class="stb" data-k="camQ" data-d="1">＋</button></div></div>
+      <div class="row"><label>最高幀率<small>張/秒</small></label>
+        <div class="stp"><button class="stb" data-k="camFps" data-d="-1">−</button><b id="v_camFps"></b><button class="stb" data-k="camFps" data-d="1">＋</button></div></div>
+      <div class="row"><label>鏡頭裝在<small>決定前視/後視</small></label>
+        <div class="seg"><button id="p0">原車頭</button><button id="p1">原車尾</button></div></div>
+    </div>
+    <div class="note" id="camNote"></div>
+  </div>
+  <div id="paneD" class="pane">
+    <table id="lat"></table>
+    <div class="note" id="latNote" style="margin-top:.5rem"></div>
+  </div>
+</div></div>
+
+<div id="pair"><div class="pc"><h2>連線到電腦模擬器</h2>
+<p id="pairMsg">請輸入電腦畫面上的 6 碼連線碼（或直接掃電腦上的 QR）</p>
+<input id="pairIn" maxlength="10" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="例如 k7m2xp">
+<button id="pairGo">連線</button>
+<a href="?demo=1">不連線，先看示範模式</a></div></div>
+<script src="js/net.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const N=0.30, WHEEL_D=0.08, MAX_RPM=500;
+const MN=['直線','普通','過彎'];
+const PDEF=[{sens:60,lim:100,mi:55},{sens:100,lim:80,mi:40},{sens:130,lim:60,mi:20}];   // 每種模式各自的 靈敏度/速度上限/內輪最低速
+const DEF={drv:0,bal:0,base:1,rev:60,dz:5,flip:0,hold:0,camOn:1,camRes:0,camQ:50,camFps:15,camPos:0,rl:1};
+let GAME=false,gAuto=0;   // GAME: 連到賽車遊戲(收到 G,1)時為 true
+const S=Object.assign({p:N,locked:false,drag:false,gdir:0,hint:0,st:0,opp:0,ao:1},DEF);
+const P=PDEF.map(o=>Object.assign({},o));
+const clampv=(v,a,b)=>Math.max(a,Math.min(b,v));
+const em=()=>(S.opp&&S.base!==1)?(S.base===0?2:0):S.base;   // 目前實際使用的模式
+const DEMO=/[?&]demo/.test(location.search);
+window.DEMO_D=[400,400,400,400];window.DEMO_F=0;
+
+/* ---------- 設定儲存 ---------- */
+try{const j=JSON.parse(localStorage.getItem('rc4wd5')||'{}');for(const k in DEF)if(typeof j[k]==='number')S[k]=j[k];
+  if(Array.isArray(j.P))j.P.forEach((o,i)=>{if(i<3&&o)for(const k in PDEF[i])if(typeof o[k]==='number')P[i][k]=o[k];});}catch(e){}
+function save(){try{const o={};for(const k in DEF)o[k]=S[k];o.P=P;localStorage.setItem('rc4wd5',JSON.stringify(o));}catch(e){}}
+const cap=(el,e)=>{try{el.setPointerCapture(e.pointerId);}catch(_){}};   // 沒有有效指標時不報錯
+const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}};
+
+/* ---------- 油門 ---------- */
+function thr(){
+  if(S.p>=N)return Math.round((S.p-N)/(1-N)*100);
+  return -Math.round(Math.min(GAME?1:S.rev/100,(N-S.p)/N)*100);   // 遊戲: 往下拉就是煞車，不受倒車上限限制
+}
+const thrEl=$('thr');
+thrEl.innerHTML='<div class="zone" id="zR" style="background:#2a1214"></div><div id="thrFill"></div><div id="thrN"></div><div id="thrNL">0 中立</div>'
+ +'<div id="thrF">▲ 油門</div><div id="thrR">▼ 倒車</div><div id="thrHint"></div><div id="thrThumb">0%</div>';
+for(const f of [25,50,75,100]){
+  const t=(1-(N+(1-N)*f/100))*100;
+  const d=document.createElement('div');d.className='tl';d.style.top=t+'%';thrEl.appendChild(d);
+  const k=document.createElement('div');k.className='tk';k.style.top=t+'%';k.textContent=f;if(f===100)k.style.transform='translateY(6px)';thrEl.appendChild(k);
+}
+/* 馬達保護: 同一次按壓(手指不離開)不能跨過 0% 換方向——
+   起步推油門，這次最低只能到 0%，要放手再按才能倒車；起步倒車同理不能轉正。鎖定與非鎖定都一樣。 */
+const rawT=p=>p>=N?(p-N)/(1-N)*100:-(N-p)/N*100;
+function setY(e,down){
+  const r=thrEl.getBoundingClientRect();
+  let p=Math.max(0,Math.min(1,1-(e.clientY-r.top)/r.height)),t=rawT(p);
+  if(down){const c=rawT(S.p);S.gdir=Math.abs(c)>=3?(c>0?1:-1):0;}   // 這次按壓的方向: 拉桿已有油門(鎖定中)就以它為準
+  if(!S.gdir&&Math.abs(t)>=3)S.gdir=t>0?1:-1;                          // 從 0 起步: 第一個超出死區(3%)的方向就是這次的方向
+  S.hint=0;
+  const prot=S.rl&&!GAME;
+  if(prot&&S.gdir===1&&p<N){p=N;if(t<-3)S.hint=1;}                           // 前進中想往倒車拉: 卡在 0%
+  else if(prot&&S.gdir===-1&&p>N){p=N;if(t>3)S.hint=-1;}                     // 倒車中想往前拉: 卡在 0%
+  S.p=p;
+}
+thrEl.addEventListener('pointerdown',e=>{cap(thrEl,e);S.drag=true;setY(e,true);draw();});
+thrEl.addEventListener('pointermove',e=>{if(S.drag){setY(e,false);draw();}});
+const thrEnd=()=>{if(!S.drag)return;S.drag=false;S.gdir=0;S.hint=0;
+  if(!S.locked)S.p=N;draw();};   // 鎖定開啟: 放手維持，不回中
+thrEl.addEventListener('pointerup',thrEnd);thrEl.addEventListener('pointercancel',thrEnd);
+/* 油門鎖定: 用 pointerdown，手指還壓著拉桿 / 螢幕時也能按 (多指)，放手後油門維持不回彈 */
+$('lock').addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  S.locked=!S.locked;
+  if(!S.locked&&!S.drag)S.p=N;       // 關閉鎖定: 沒在拉拉桿就歸零；拉著就等放手再回中
+  buzz();draw();});
+$('flip').addEventListener('click',()=>{
+  S.flip=S.flip?0:1;save();S.locked=false;S.p=N;S.st=0;   // 換邊時先停車歸零
+  buzz();draw();});
+
+/* ---------- 方向 ---------- */
+const sT=$('sTrack');
+for(const f of [-50,50]){const d=document.createElement('div');d.className='sTk';d.style.left=(50+f/2)+'%';sT.appendChild(d);}
+function setX(e){const r=sT.getBoundingClientRect();
+  let v=((e.clientX-r.left)/r.width-0.5)*2;v=Math.max(-1,Math.min(1,v));
+  const dz=S.dz/100;v=Math.abs(v)<dz?0:Math.sign(v)*(Math.abs(v)-dz)/(1-dz);
+  S.st=Math.round(v*100);}
+let stDrag=false;
+sT.addEventListener('pointerdown',e=>{cap(sT,e);stDrag=true;setX(e);draw();});
+sT.addEventListener('pointermove',e=>{if(stDrag){setX(e);draw();}});
+const stEnd=()=>{stDrag=false;S.st=0;draw();};
+sT.addEventListener('pointerup',stEnd);sT.addEventListener('pointercancel',stEnd);
+
+/* ---------- 可調參數滑桿 (含 − / ＋) ---------- */
+const params=[];
+function mkParam(id,label,cfg){
+  const h=$(id);
+  h.innerHTML='<div class="ph"><span class="pl"></span><b class="pv"></b></div>'
+   +'<div class="pc"><button class="stb">−</button><div class="sl"><div class="tr"><div class="sf"></div></div><div class="sd"></div><div class="sk"></div></div><button class="stb">＋</button></div>';
+  const sl=h.querySelector('.sl'),sf=h.querySelector('.sf'),sk=h.querySelector('.sk'),pv=h.querySelector('.pv'),sd=h.querySelector('.sd'),pl=h.querySelector('.pl');
+  const frac=v=>(v-cfg.min)/(cfg.max-cfg.min),get=()=>P[S.base][cfg.key];   // 調的是「固定模式」那一組
+  if(cfg.def==null)sd.style.display='none';else sd.style.left=frac(cfg.def)*100+'%';
+  function setv(v){v=clampv(Math.round(v/cfg.step)*cfg.step,cfg.min,cfg.max);
+    if(v!==get()){P[S.base][cfg.key]=v;save();}draw();}
+  function fromX(e){const r=sl.getBoundingClientRect();
+    setv(cfg.min+clampv((e.clientX-r.left)/r.width,0,1)*(cfg.max-cfg.min));}
+  let drag=false;
+  sl.addEventListener('pointerdown',e=>{cap(sl,e);drag=true;fromX(e);});
+  sl.addEventListener('pointermove',e=>{if(drag)fromX(e);});
+  sl.addEventListener('pointerup',()=>drag=false);sl.addEventListener('pointercancel',()=>drag=false);
+  h.querySelectorAll('.stb').forEach((b,i)=>{
+    const d=i?1:-1;let tm;
+    b.addEventListener('pointerdown',()=>{setv(get()+d*cfg.step);buzz();
+      tm=setTimeout(function f(){setv(get()+d*cfg.step);tm=setTimeout(f,80);},420);});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(tm)));
+  });
+  params.push(()=>{const v=get(),f=frac(v)*100;sf.style.width=f+'%';sk.style.left=f+'%';pv.textContent=cfg.fmt(v);pl.textContent=label+' · '+MN[S.base];});
+}
+mkParam('pSens','轉向靈敏度',{key:'sens',min:30,max:150,step:5,def:100,fmt:v=>v+'%'});
+mkParam('pLim','最高速度上限',{key:'lim',min:20,max:100,step:5,def:null,fmt:v=>v+'%'});
+
+/* ---------- 模式 (直線 / 普通 / 過彎) ---------- */
+for(let i=0;i<3;i++)$('m'+i).addEventListener('pointerdown',()=>{S.base=i;S.opp=0;save();buzz();draw();});
+const oppEl=$('opp');   // 右上: 固定=直線時顯示「過彎」，固定=過彎時顯示「直線」，普通不顯示
+oppEl.addEventListener('pointerdown',e=>{
+  if(S.hold){cap(oppEl,e);S.opp=1;}else S.opp=S.opp?0:1;
+  buzz();draw();});
+const oppEnd=()=>{if(S.hold&&S.opp){S.opp=0;draw();}};
+oppEl.addEventListener('pointerup',oppEnd);oppEl.addEventListener('pointercancel',oppEnd);
+
+/* ---------- 設定視窗 ---------- */
+const modal=$('modal');
+$('gear').onclick=()=>{modal.classList.add('show');draw();};
+$('x').onclick=()=>modal.classList.remove('show');
+modal.addEventListener('pointerdown',e=>{if(e.target===modal)modal.classList.remove('show');});
+for(let i=0;i<3;i++)$('d'+i).onclick=()=>{S.drv=i;save();draw();};
+$('ao').onclick=()=>{S.ao=S.ao?0:1;sendA();draw();};
+$('rl').onclick=()=>{S.rl=S.rl?0:1;save();sendRL();draw();};
+const SPEC={rev:[20,100,5],dz:[0,15,1],bal:[-40,40,1],camQ:[20,95,5],camFps:[3,20,1]};
+document.querySelectorAll('.stb[data-k]').forEach(b=>{
+  const k=b.dataset.k,d=+b.dataset.d,[mn,mx,st]=SPEC[k];let tm;
+  const go=()=>{S[k]=Math.max(mn,Math.min(mx,S[k]+d*st));save();if(k[0]==='c')sendV();draw();};
+  b.addEventListener('pointerdown',()=>{go();buzz();tm=setTimeout(function f(){go();tm=setTimeout(f,80);},420);});
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(tm)));
+});
+$('bz').onclick=()=>{S.bal=0;save();draw();};
+$('rst').onclick=()=>{for(const k of ['drv','bal','rev','dz','flip','hold'])S[k]=DEF[k];S.opp=0;save();draw();};
+/* 鏡頭設定 */
+const PRE=[{n:'流暢',r:0,q:50,f:15},{n:'標準',r:0,q:70,f:12},{n:'高畫質',r:1,q:70,f:8}];
+const preIdx=()=>PRE.findIndex(p=>p.r===S.camRes&&p.q===S.camQ&&p.f===S.camFps);
+function applyPre(i){const p=PRE[i];S.camRes=p.r;S.camQ=p.q;S.camFps=p.f;}
+let vT=0;function sendV(){clearTimeout(vT);vT=setTimeout(()=>{if(ws&&ws.readyState===1)ws.send(['V',S.camOn,S.camRes,S.camQ,S.camFps].join(','));},150);}
+for(let i=0;i<3;i++)$('c'+i).onclick=()=>{S.camOn=1;applyPre(i);save();sendV();draw();};
+for(let i=0;i<2;i++){$('r'+i).onclick=()=>{S.camRes=i;save();sendV();draw();};$('p'+i).onclick=()=>{S.camPos=i;save();draw();};}
+$('camSw').onclick=()=>{S.camOn=S.camOn?0:1;save();sendV();draw();};
+for(let i=0;i<4;i++)$('cq'+i).addEventListener('pointerdown',()=>{   // 影像卡片上的快速選擇: 關 / 流暢 / 標準 / 高畫質 (一鍵直達)
+  if(i===0)S.camOn=0;else{S.camOn=1;applyPre(i-1);}
+  buzz();save();sendV();draw();});
+for(let i=0;i<2;i++)$('h'+i).onclick=()=>{S.hold=i;S.opp=0;save();draw();};
+/* 設定分頁 + 模式參數表 */
+function tab(i){['A','B','C','D'].forEach((k,j)=>{$('pane'+k).className='pane'+(i===j?' show':'');});
+  $('tA').className=i===0?'on':'';$('tB2').className=i===1?'on':'';$('tC').className=i===2?'on':'';$('tD').className=i===3?'on':'';draw();}
+$('tA').onclick=()=>tab(0);$('tB2').onclick=()=>tab(1);$('tC').onclick=()=>tab(2);$('tD').onclick=()=>tab(3);
+const PSPEC=[['sens','轉向靈敏度','越大越靈敏',30,150,5],['lim','最高速度上限','最快那顆輪',20,100,5],['mi','內輪最低速','占外輪 %・越小越緊',0,80,5]];
+(function(){
+  let h='<tr><th></th>'+MN.map((n,i)=>'<th data-c="'+i+'">'+n+'</th>').join('')+'</tr>';
+  PSPEC.forEach(r=>{h+='<tr><td class="lab">'+r[1]+'<small>'+r[2]+'</small></td>'+[0,1,2].map(m=>
+    '<td data-c="'+m+'"><div class="ms"><button data-m="'+m+'" data-k="'+r[0]+'" data-d="-1">−</button><b id="mv_'+m+'_'+r[0]+'"></b><button data-m="'+m+'" data-k="'+r[0]+'" data-d="1">＋</button></div></td>').join('')+'</tr>';});
+  $('mt').innerHTML=h;
+  $('mt').querySelectorAll('button').forEach(b=>{
+    const m=+b.dataset.m,k=b.dataset.k,d=+b.dataset.d,sp=PSPEC.find(r=>r[0]===k);let tm;
+    const go=()=>{P[m][k]=clampv(P[m][k]+d*sp[5],sp[3],sp[4]);save();draw();};
+    b.addEventListener('pointerdown',()=>{go();buzz();tm=setTimeout(function f(){go();tm=setTimeout(f,80);},420);});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(tm)));
+  });
+})();
+$('mrst').onclick=()=>{P.forEach((o,i)=>Object.assign(o,PDEF[i]));save();draw();};
+$('fs').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(e){}};
+
+/* ---------- 畫面更新 ---------- */
+const fmtSt=v=>v===0?'中立':(v<0?'◀ 左 ':'右 ▶ ')+Math.abs(v)+'%';
+function draw(){
+  const t=thr();
+  /* 油門 */
+  const th=$('thrThumb');th.style.top=(1-S.p)*100+'%';
+  th.textContent=t===0?'0%':(t<0?'倒 '+(-t)+'%':t+'%');th.className=S.locked?'lk':'';
+  const f=$('thrFill');
+  if(S.p>=N){f.style.top=(1-S.p)*100+'%';f.style.height=(S.p-N)*100+'%';f.style.background='linear-gradient(#16a34a,#14532d)';}
+  else{f.style.top=(1-N)*100+'%';f.style.height=(N-S.p)*100+'%';f.style.background='linear-gradient(#7f1d1d,#b91c1c)';}
+  $('thrN').style.top=(1-N)*100+'%';$('thrNL').style.top=(1-N)*100+'%';
+  const hn=$('thrHint');
+  if(S.hint){hn.style.display='block';hn.textContent=S.hint>0?'放手後才能倒車':'放手後才能前進';
+    hn.style.top='calc('+(1-N)*100+'% '+(S.hint>0?'- 3.9rem':'+ 2.5rem')+')';}
+  else hn.style.display='none';
+  const z=$('zR');z.style.top=(1-N)*100+'%';z.style.bottom='0';
+  const L=$('lock'),tx=t<0?'倒 '+(-t)+'%':t+'%';
+  if(S.locked){L.className='on';L.innerHTML='🔒 油門鎖定<small>開 · 維持 '+tx+'</small>';}
+  else{L.className='ready';L.innerHTML='🔓 油門鎖定<small>關 · 放手回中</small>';}
+  thrEl.className='card'+(S.locked?' lk':'');
+  const fb=$('flip');fb.className=S.flip?'on':'';fb.querySelector('b').textContent=S.flip?'反向':'正向';
+  MK[0].style.display=S.flip?'none':'';MK[1].style.display=S.flip?'':'none';
+  renderWarn();
+  /* 方向 */
+  const pos=50+S.st/2;
+  $('sThumb').style.left=pos+'%';$('sThumb').textContent=S.st===0?'0':(S.st<0?'◀ ':'')+Math.abs(S.st)+(S.st>0?' ▶':'');
+  const sf=$('sFill');sf.style.left=Math.min(50,pos)+'%';sf.style.width=Math.abs(S.st)/2+'%';
+  $('steerV').textContent=fmtSt(S.st);
+  /* 參數 / 模式 */
+  params.forEach(fn=>fn());
+  for(let i=0;i<3;i++)$('m'+i).className=S.base===i?'on':'';
+  const o=$('opp');
+  if(S.base===1){o.hidden=true;}
+  else{const tg=S.base===0?2:0;o.hidden=false;o.className=S.opp?'on':'';
+    o.innerHTML='⚡ '+MN[tg]+'<small>'+(S.opp?(S.hold?'使用中':'使用中 · 再點回'+MN[S.base]):(S.hold?'按住切換':'點一下切換'))+'</small>';}
+  for(let i=0;i<2;i++)$('h'+i).className=S.hold===i?'on':'';
+  document.querySelectorAll('#mt [data-c]').forEach(e=>e.classList.toggle('cur',+e.dataset.c===em()));
+  for(let m=0;m<3;m++)for(const r of PSPEC)$('mv_'+m+'_'+r[0]).textContent=P[m][r[0]]+'%';
+  /* 中央 tiles */
+  $('tT').textContent=t<0?'倒 '+(-t)+'%':t+'%';
+  $('tS').textContent=S.st===0?'中':(S.st<0?'左 ':'右 ')+Math.abs(S.st)+'%';
+  $('tM').textContent=(S.opp?'⚡':'')+MN[em()];
+  /* 設定視窗 */
+  for(let i=0;i<3;i++)$('d'+i).className=S.drv===i?'on':'';
+  const ao=$('ao');ao.className='sw '+(S.ao?'on':'off');ao.textContent=S.ao?'● 開啟中':'○ 已關閉';
+  const rl=$('rl');rl.className='sw '+(S.rl?'on':'off');rl.textContent=S.rl?'● 開啟中':'○ 已關閉';
+  $('rlSm').textContent=GAME?'煞停後不會自動倒車，放開再踩才倒':'同一次按壓不跨 0% 換方向';
+  const ab=$('autoBtn');ab.className=gAuto?'on':'';ab.textContent=gAuto?'🤖 自動駕駛中':'🤖 自動駕駛';
+  drawCam();
+  $('v_camQ').textContent=S.camQ+'%';$('v_camFps').textContent=S.camFps;
+  $('v_rev').textContent=S.rev+'%';$('v_dz').textContent=S.dz+'%';
+  $('v_bal').textContent=S.bal===0?'0':(S.bal>0?'右 +':'左 ')+Math.abs(S.bal);
+}
+
+/* ---------- 俯視車況圖 ---------- */
+const NS='http://www.w3.org/2000/svg',svg=$('car');
+function el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;svg.appendChild(e);return e;}
+const W={},WT={},SN={},WR={};
+const WPOS={FL:[31,62],FR:[107,62],RL:[31,124],RR:[107,124]};
+const SPOS={FL:[59,54,-15],FR:[91,54,15],RL:[59,170,195],RR:[91,170,165]};
+for(const n of ['FL','FR','RL','RR'])SN[n]={w:el('path',{d:'',fill:'#444',opacity:.7}),t:el('text',{fill:'#cfd8e3','font-size':12,'font-weight':700,'text-anchor':'middle'},'--')};
+el('rect',{x:47,y:54,width:56,height:116,rx:12,fill:'#1d2735',stroke:'#3d4c63','stroke-width':2});
+el('path',{d:'M75 66 L64 88 L86 88 Z',fill:'#41536c'});
+const MK=[el('rect',{x:47,y:50,width:56,height:5,rx:2.5,fill:'#2f8cff'}),el('rect',{x:47,y:169,width:56,height:5,rx:2.5,fill:'#2f8cff'})];
+for(const n in WPOS){const [x,y]=WPOS[n];
+  WR[n]=el('rect',{x,y,width:12,height:34,rx:3,fill:'#0c1118',stroke:'#3d4c63','stroke-width':2});
+  W[n]=el('rect',{x:x+2,y:y+17,width:8,height:0,rx:2,fill:'#22c55e'});
+  WT[n]=el('text',{x:n[1]==='L'?x-3:x+15,y:y+21,fill:'#cfd8e3','font-size':11,'font-weight':700,'text-anchor':n[1]==='L'?'end':'start'},'0');}
+function dCol(d){return d>=400?'#566274':d<=20?'#ef4444':d<=40?'#f97316':d<150?'#facc15':'#22c55e';}
+const WCOL=['#3d4c63','#60a5fa','#ef4444','#f97316'];   // 驅動 / 滑行 / 短路煞車 / 堵轉 的輪框顏色
+function fan(n,d){
+  const [x,y,a]=SPOS[n],L=d>=400?38:10+Math.min(d,150)/150*28,r=Math.PI/180;
+  const p1=[x+L*Math.sin((a-13)*r),y-L*Math.cos((a-13)*r)],p2=[x+L*Math.sin((a+13)*r),y-L*Math.cos((a+13)*r)];
+  SN[n].w.setAttribute('d','M'+x+' '+y+' L'+p1[0].toFixed(1)+' '+p1[1].toFixed(1)+' L'+p2[0].toFixed(1)+' '+p2[1].toFixed(1)+' Z');
+  SN[n].w.setAttribute('fill',dCol(d));
+  const t=SN[n].t;t.setAttribute('x',n[1]==='L'?36:114);t.setAttribute('y',n[0]==='F'?12:216);
+  t.setAttribute('fill',dCol(d));t.textContent=d>=400?'--':Math.round(d);
+}
+function wheel(n,rpm,code){
+  const H=Math.min(1,Math.abs(rpm)/MAX_RPM)*15,w=W[n],y0=WPOS[n][1]+17;
+  if(rpm>=0){w.setAttribute('y',y0-H);w.setAttribute('fill','#22c55e');}else{w.setAttribute('y',y0);w.setAttribute('fill','#ef4444');}
+  w.setAttribute('height',H);WT[n].textContent=Math.round(rpm);
+  WR[n].setAttribute('stroke',WCOL[code||0]);
+}
+['FL','FR','RL','RR'].forEach(n=>{fan(n,400);wheel(n,0,1);});
+
+/* ---------- 鏡頭 ---------- */
+const cv=$('cam'),cx=cv.getContext('2d');
+let camCap=-1,lastFrameT=0,decBusy=false,nFr=0,nBytes=0,fpsTxt='',curFps=0,curKB=0;
+/* ---------- 延遲統計 (真車 / 模擬器共用同一套協定) ----------
+   Q,ts → 車端立刻回 Q,ts,車端時鐘(ms mod 65536)  : 量 Wi-Fi 往返，順便估兩邊時鐘差
+   F,車端時鐘 → 緊接一張影像                       : 影像從「車端取像」到「手機顯示」的延遲
+   T 遙測尾巴 seq,lp,ca,uart                         : Pico 回報的 控制週期 / 指令年齡 / ESP⇄Pico 往返 */
+const LATW=10000,lat={rtt:[],tel:[],cam:[],uart:0,lp:0,ca:0,off:null,telLast:0,telN:0,telRate:0,fs:0,capT:null,camAge:null,hasCar:false};
+function latPush(a,v){const n=Date.now();a.push([n,v]);while(a.length&&n-a[0][0]>LATW)a.shift();}
+function latStat(a){if(!a.length)return null;let s=0,m=0;for(const e of a){s+=e[1];if(e[1]>m)m=e[1];}return{avg:s/a.length,max:m,last:a[a.length-1][1],n:a.length};}
+function latCls(v,g,a){return v==null?'n':(v<=g?'g':(v<=a?'a':'r'));}
+function latOnQ(p){const t0=+p[1],c16=+p[2],now=performance.now();if(!isFinite(t0))return;
+  const r=now-t0;latPush(lat.rtt,r);lat.hasCar=true;
+  if(isFinite(c16)){const mid=Math.round((t0+now)/2);lat.off=((c16-(mid&0xFFFF))%65536+65536)%65536;}}   // 車端時鐘 ≈ 手機時鐘 + off (mod 65536)
+/* ---------- 3S 電池 (ESP32 讀 INA219 電壓，放在遙測最後一欄，mV；0 = 沒接電量計) ----------
+   用「每顆電芯電壓 → 剩餘電量」的鋰電池靜置曲線估算。行駛中電壓會下垂，所以數字偏低；
+   這裡用慢速平滑，停車幾秒後會回升到較準的值。 */
+const CELL=[[3.27,0],[3.61,5],[3.69,10],[3.71,15],[3.73,20],[3.75,25],[3.77,30],[3.79,35],[3.80,40],[3.82,45],[3.84,50],[3.85,55],[3.87,60],[3.91,65],[3.95,70],[3.98,75],[4.02,80],[4.08,85],[4.11,90],[4.15,95],[4.20,100]];
+function cellPct(v){if(v<=CELL[0][0])return 0;for(let i=1;i<CELL.length;i++)if(v<=CELL[i][0]){const a=CELL[i-1],b=CELL[i];return a[1]+(b[1]-a[1])*(v-a[0])/(b[0]-a[0]);}return 100;}
+const BAT={v:0,pct:null,has:false};
+function onBat(mv){
+  if(!(mv>3000)){BAT.has=false;BAT.v=0;BAT.pct=null;return;}
+  const v=mv/1000;BAT.v=BAT.v?BAT.v+(v-BAT.v)*0.06:v;BAT.has=true;BAT.pct=Math.round(cellPct(BAT.v/3));
+}
+const batLevel=()=>!BAT.has?0:(BAT.pct<=7?2:(BAT.pct<=15?1:0));   // 0 正常 1 偏低(≤15%) 2 極低(≤7%，約每顆 3.6V 以下)
+function drawBat(){
+  const e=$('bat');
+  if(!BAT.has){e.className='';e.textContent=lat.hasCar?'🔋 未接電量計':'🔋 --';return;}
+  e.textContent='🔋 '+BAT.v.toFixed(1)+'V · '+BAT.pct+'%';
+  e.className=BAT.pct<=7?'r':(BAT.pct<=30?'a':'g');
+}
+function latOnTel(p){const n=performance.now();if(lat.telLast)latPush(lat.tel,n-lat.telLast);lat.telLast=n;lat.telN++;
+  if(p.length>14){lat.lp=+p[13]||0;lat.ca=+p[14]||0;}if(p.length>15)lat.uart=+p[15]||0;
+  onBat(p.length>16?+p[16]:0);drawBat();}
+function onFrame(buf){
+  if(decBusy)return;decBusy=true;nFr++;nBytes+=buf.byteLength;
+  const cap=lat.capT;lat.capT=null;
+  createImageBitmap(new Blob([buf],{type:'image/jpeg'})).then(bm=>{
+    if(cv.width!==bm.width){cv.width=bm.width;cv.height=bm.height;}
+    cx.drawImage(bm,0,0);lastFrameT=Date.now();if(bm.close)bm.close();
+    if(cap!=null&&lat.off!=null){const e=(((Math.round(performance.now())+lat.off)&0xFFFF)-cap+65536)&0xFFFF;if(e<20000)latPush(lat.cam,e);}   // 取像→顯示
+  }).catch(()=>{}).finally(()=>{decBusy=false;});
+}
+setInterval(()=>{curFps=nFr;curKB=nFr?nBytes/1024/nFr:0;fpsTxt=nFr?(nFr+' fps · '+curKB.toFixed(0)+' KB/張'):'';nFr=0;nBytes=0;lat.telRate=lat.telN;lat.telN=0;drawCam();},1000);
+function setMsg(cls,ic,t,sub,over){const m=$('camMsg');m.className=(cls||'')+(over?' over':'');m.children[0].textContent=ic;m.children[1].textContent=t;m.children[2].textContent=sub||'';m.style.display='flex';}
+function drawCam(){
+  const front=(S.camPos===0)!==!!S.flip;                 // 鏡頭看的方向 = 目前行進方向？(換邊後原車頭鏡頭變成後視)
+  cv.style.transform=front?'none':'scaleX(-1)';          // 後視: 鏡像，左右才和後照鏡一致
+  const live=Date.now()-lastFrameT<1500,pi=preIdx(),link=DEMO||(ws&&ws.readyState===1);
+  $('camBadge').textContent=live?(front?'前視':'後視（鏡像）'):'';
+  $('camBadge').style.display=live&&S.camOn?'block':'none';
+  /* 沒有畫面時，清楚說明「為什麼」和「怎麼辦」 */
+  if(!link)setMsg('bad','📡','尚未連線','連上車子後才會有鏡頭畫面');
+  else if(!S.camOn)setMsg('off','🚫','鏡頭已關閉','點下方「流暢／標準／高畫質」即可開啟');
+  else if(camCap===0)setMsg('bad','⚠️','車子沒有偵測到鏡頭','檢查鏡頭排線，或韌體是否含 camera 模組。其他功能不受影響');
+  else if(!live&&lastFrameT)setMsg('bad','⏳','影像中斷 '+Math.round((Date.now()-lastFrameT)/1000)+' 秒','Wi-Fi 訊號太弱或鏡頭卡住；控制不受影響，會自動恢復',true);
+  else if(!live)setMsg('','⏳',camCap===1?'等待第一張影像…':'等待車子回報鏡頭…','車子已連線，鏡頭啟動中');
+  else $('camMsg').style.display='none';
+  for(let i=0;i<4;i++)$('cq'+i).className=(i===0?!S.camOn:(S.camOn&&pi===i-1))?'on':'';
+  /* 鏡頭卡片右下角: 延遲摘要 (顏色: 綠=好 黃=偏高 紅=太高) */
+  const rt=latStat(lat.rtt),cm=latStat(lat.cam),cl=(v,g,a)=>'<b class="'+latCls(v,g,a)+'">'+(v==null?'--':Math.round(v)+'ms')+'</b>';
+  const car=lat.hasCar?(lat.uart+lat.lp/2):null;   // 車端 ≈ ESP⇄Pico 往返 + Pico 控制週期的一半
+  $('camInfo').innerHTML=
+    '網路 '+cl(rt&&rt.avg,40,100)+' 車端 '+cl(car,15,40)+' 影像 '+(S.camOn?cl(cm&&cm.avg,200,400)+(live?' '+curFps+'fps':''):'<b class="n">關</b>')+(S.camOn&&pi<0?' 自訂':'');
+  drawLat();
+}
+function drawLat(){
+  if($('paneD').className.indexOf('show')<0)return;
+  const rt=latStat(lat.rtt),tl=latStat(lat.tel),cm=latStat(lat.cam),f=(v,u)=>v==null?'--':Math.round(v)+(u||' ms');
+  const row=(n,sm,v,c)=>'<tr><td>'+n+'<small>'+sm+'</small></td><td class="v '+c+'">'+v+'</td></tr>';
+  const wr=rt?rt.avg/2:null,total=(rt&&lat.hasCar)?wr+lat.uart/2+lat.lp/2:null;
+  $('lat').innerHTML=
+    row('手機 ⇄ 車子（Wi-Fi 往返）','10 秒平均 / 最大',rt?f(rt.avg)+' / '+f(rt.max):'--',latCls(rt&&rt.avg,40,100))+
+    row('車內 ESP32 ⇄ Pico（UART）','指令送出→回報，含處理',lat.hasCar?f(lat.uart):'--',latCls(lat.hasCar?lat.uart:null,15,40))+
+    row('Pico 控制迴圈週期','正常約 20 ms，越大表示 Pico 忙不過來',lat.hasCar?f(lat.lp):'--',latCls(lat.hasCar?lat.lp:null,25,40))+
+    row('Pico 看到的指令間隔','超過 300 ms 會觸發失控保護',lat.hasCar?f(lat.ca):'--',latCls(lat.hasCar?lat.ca:null,80,200))+
+    row('遙測更新間隔','平均 / 最大（正常約 100 ms）',tl?f(tl.avg)+' / '+f(tl.max):'--',latCls(tl&&tl.max,150,300))+
+    row('影像延遲','車端取像→手機顯示，平均 / 最大',cm?f(cm.avg)+' / '+f(cm.max):'--',latCls(cm&&cm.avg,200,400))+
+    row('影像幀率 / 大小','目前實際收到',(curFps?curFps+' fps / '+curKB.toFixed(0)+' KB':'--'),curFps?'g':'n')+
+    row('電池（3S）','INA219 電壓 / 估計電量；行駛中偏低',BAT.has?BAT.v.toFixed(2)+' V（每顆 '+(BAT.v/3).toFixed(2)+'）/ '+BAT.pct+'%':'未偵測到電量計',BAT.has?['g','a','r'][batLevel()]:'n')+
+    row('估計：手指 → 輪子反應','Wi-Fi 單程 + UART + 控制迴圈半週期',total==null?'--':'≈ '+f(total),latCls(total,60,120));
+  $('latNote').textContent='延遲每秒更新一次。往返 >100 ms 或指令間隔接近 300 ms 時，車子可能因失控保護而頓一下；影像延遲高通常是解析度/品質太高，可到「鏡頭」分頁調低。'+(DEMO?'（示範模式沒有真實連線）':'');
+}
+
+/* ---------- 指令 (換邊時在這裡整體換算) ---------- */
+function cmd(){
+  const f=S.flip;   // 換邊: 油門反號、前/後驅互換、直線微調反號；方向(轉圈方向)不變
+  const m=em(),q=P[m];   // 目前使用的模式 -> 該模式的 速度上限 / 靈敏度 / 內輪最低速
+  return [f?-thr():thr(),S.st,f?-S.bal:S.bal,f?(S.drv===1?2:(S.drv===2?1:0)):S.drv,q.lim,q.sens,m,q.mi];
+}
+let HZ={m:[],cls:''};
+function renderWarn(){
+  const w=$('warn'),ex=[];
+  if(!S.ao)ex.push('避障關閉');if(S.flip)ex.push('車頭反向');
+  if(HZ.m.length){w.className=HZ.cls;w.textContent=HZ.m.concat(ex).join('　');}
+  else if(ex.length){w.className='wn';w.textContent='⚠ '+ex.join('　');}
+  else{w.className='';w.textContent='● 系統正常';}
+}
+/* ---------- 連線 / 遙測 ---------- */
+let ws=null,lastT=0;
+function sendA(){if(ws&&ws.readyState===1)ws.send('A,'+S.ao);}
+function sendRL(){if(ws&&ws.readyState===1)ws.send('RL,'+S.rl);}
+const fmtLap=v=>{v=+v;if(!(v>=0))return '—';const m=Math.floor(v/60),s=v-m*60;return m+':'+String(Math.floor(s)).padStart(2,'0')+'.'+Math.floor((s%1)*10);};
+const ST_TXT={race:'比賽中',countdown:'倒數中',menu:'選單',paused:'暫停',loading:'載入中',replay:'回放',record:'圈速紀錄'};
+function onGameData(p){   // D,rpm,rpmFrac,gear,thr,brk,latG,lonG,lap,laps,lapT,last,best,auto,state
+  const g=n=>+p[n]||0;
+  $('gGear').textContent=g(3)<0?'R':(g(3)===0?'N':String(g(3)));
+  $('gRpm').textContent=Math.round(g(1));$('gRpmF').style.width=Math.max(0,Math.min(1,g(2)))*100+'%';$('gRpmF').className=g(2)>.93?'red':'';
+  $('gThr').style.width=Math.max(0,Math.min(100,g(4)))+'%';$('gBrk').style.width=Math.max(0,Math.min(100,g(5)))+'%';
+  $('gLat').textContent=g(6).toFixed(2);$('gLon').textContent=g(7).toFixed(2);
+  $('gLap').textContent=g(8)?(g(8)+(g(9)?' / '+g(9):'')):'—';
+  $('gLapT').textContent=fmtLap(p[10]);$('gLast').textContent=fmtLap(p[11]);$('gBest').textContent=fmtLap(p[12]);
+  gAuto=g(13)?1:0;const st=(p[14]||'').trim();$('gState').textContent=(ST_TXT[st]||st)+(gAuto?' · 自動駕駛':'');
+  const ab=$('autoBtn');ab.className=gAuto?'on':'';ab.textContent=gAuto?'🤖 自動駕駛中':'🤖 自動駕駛';
+}
+$('autoBtn').addEventListener('pointerdown',e=>{e.preventDefault();gAuto=gAuto?0:1;buzz();if(ws&&ws.readyState===1)ws.send('AU,'+gAuto);draw();});
+function onTel(s){
+  lastT=Date.now();const p=s.split(',');latOnTel(p);
+  const f=S.flip,M=f?[3,2,1,0]:[0,1,2,3],sg=f?-1:1;   // 換邊: 把實體右後/左後…對應到畫面的前/後
+  const r=[+p[1],+p[2],+p[3],+p[4]],d=[+p[5],+p[6],+p[7],+p[8]];
+  let fl=+p[9]||0;const lin=(+p[10]||0)*sg;
+  if(f)fl=(fl&~3)|((fl&1)?2:0)|((fl&2)?1:0);
+  const wm=(p[11]||'').trim(),wc=i=>wm.length===4?+wm[M[i]]:1;
+  ['FL','FR','RL','RR'].forEach((n,i)=>{wheel(n,sg*r[M[i]],wc(i));fan(n,d[M[i]]);});
+  const tb=$('tB'),cnt=c=>wm.split('').filter(x=>x===String(c)).length;
+  const bi=wm.length!==4?['--','']:cnt(3)?['堵轉保護','bk3']:cnt(0)?['驅動中','bk0']:cnt(2)>=cnt(1)?['短路煞車','bk2']:['滑行','bk1'];
+  tb.textContent=bi[0];tb.className=bi[1];
+  const v=(r[0]+r[1]+r[2]+r[3])/4/60*Math.PI*WHEEL_D*3.6;
+  $('spd').textContent=Math.abs(v).toFixed(1);
+  $('tL').textContent=Math.round(lin)+'%';
+  const m=[];
+  if(fl&1)m.push('⚠ 前方障礙');if(fl&2)m.push('⚠ 後方障礙');if(fl&8)m.push('⚠ 馬達堵轉');
+  if(fl&4)m.push('失控保護中');
+  const bl=batLevel();if(bl===2)m.push('⚠ 電量極低，請停車');else if(bl===1)m.push('🔋 電量偏低');
+  HZ={m:m,cls:((fl&(1|2|8))||bl===2)?'bad':'wn'};renderWarn();
+}
+/* ---------- WebRTC (PeerJS) 連線：取代原本 ESP32 的 WebSocket ----------
+   指令/遙測格式與 ESP32 版完全相同，所以上面的 UI 邏輯一行都不用改；
+   ws 只是一個介面相同的小替身 (readyState / send)。 */
+const pairEl=$('pair'),pairMsgEl=$('pairMsg'),pairIn=$('pairIn');
+let rtcPeer=null,rtcConn=null,rtcTimer=0,rtcCode=RCNet.cleanCode(RCNet.param('r'));
+if(!rtcCode)try{rtcCode=RCNet.cleanCode(localStorage.getItem('rc4wd_code')||'');}catch(e){}
+pairIn.value=rtcCode;
+function pairMsg(t,bad){pairMsgEl.textContent=t;pairMsgEl.className=bad?'bad':'';}
+function showPair(v){pairEl.style.display=v?'flex':'none';}
+function buzz2(l){try{navigator.vibrate&&navigator.vibrate(Math.min(220,30+(+l||0)*140));}catch(e){}}
+function onMsg(d){
+  if(typeof d==='string'){
+    if(d[0]==='T')onTel(d);
+    else if(d==='cam:1')camCap=1;else if(d==='cam:0')camCap=0;
+    else if(d[0]==='Q'&&d[1]===',')latOnQ(d.split(','));
+    else if(d[0]==='F'&&d[1]===',')lat.capT=+d.slice(2);
+    else if(d[0]==='B'&&d[1]===',')buzz2(d.slice(2));
+    else if(d[0]==='P'&&d[1]===','&&ws)ws.send(d);
+    else if(d[0]==='G'&&d[1]===','){GAME=true;document.body.classList.add('game');$('thrR').textContent='▼ 煞車／倒車';sendRL();draw();}
+    else if(d[0]==='D'&&d[1]===',')onGameData(d.split(','));
+  }else RCNet.toBuf(d).then(b=>{if(b)onFrame(b);});
+}
+function dial(){
+  clearTimeout(rtcTimer);
+  if(!rtcCode||!rtcPeer||rtcPeer.destroyed||!rtcPeer.open)return;
+  pairMsg('正在連線到電腦 '+rtcCode.toUpperCase()+' …');showPair(true);
+  const c=rtcPeer.connect(RCNet.PREFIX+rtcCode,{reliable:true});let ok=false;rtcConn=c;
+  c.on('open',()=>{ok=true;ws={readyState:1,send:s=>{try{if(c.open)c.send(s);}catch(e){}}};
+    try{localStorage.setItem('rc4wd_code',rtcCode);}catch(e){}
+    showPair(false);sendA();sendV();sendRL();});
+  c.on('data',onMsg);
+  const lost=()=>{if(rtcConn!==c)return;rtcConn=null;ws=null;pairMsg('連線中斷，重新連線中…',1);showPair(true);rtcTimer=setTimeout(dial,1500);};
+  c.on('close',lost);c.on('error',lost);
+  setTimeout(()=>{if(!ok&&rtcConn===c){rtcConn=null;try{c.close();}catch(e){}pairMsg('連不上。請確認電腦的模擬器頁面開著、連線碼正確；最好和電腦在同一個 Wi-Fi。',1);rtcTimer=setTimeout(dial,2000);}},10000);
+}
+function startPeer(){
+  if(rtcPeer&&!rtcPeer.destroyed)return;
+  pairMsg(rtcCode?'連線到配對伺服器…':'請輸入電腦畫面上的 6 碼連線碼（或直接掃電腦上的 QR）');
+  RCNet.loadPeer().then(Peer=>{
+    const p=rtcPeer=new Peer(RCNet.peerOptions());
+    p.on('open',dial);
+    p.on('disconnected',()=>{try{p.reconnect();}catch(e){}});
+    p.on('error',e=>{
+      if(e.type==='peer-unavailable'){rtcConn=null;ws=null;pairMsg('找不到電腦端（代碼 '+rtcCode.toUpperCase()+'）。請確認電腦上的 sim.html 開著、代碼正確。',1);showPair(true);rtcTimer=setTimeout(dial,2500);}
+      else if(['network','server-error','socket-error','socket-closed','browser-incompatible'].indexOf(e.type)>=0){
+        pairMsg(e.type==='browser-incompatible'?'這個瀏覽器不支援 WebRTC':'連不上配對伺服器（PeerJS），稍後重試…',1);showPair(true);
+        try{p.destroy();}catch(_){}rtcPeer=null;rtcTimer=setTimeout(startPeer,3000);}
+    });
+  }).catch(()=>{pairMsg('無法載入連線函式庫（PeerJS），請檢查網路後重新整理。',1);showPair(true);});
+}
+function conn(){showPair(true);startPeer();}
+$('pairGo').onclick=()=>{
+  const c=RCNet.cleanCode(pairIn.value);if(!c){pairMsg('請輸入連線碼',1);return;}
+  rtcCode=c;if(rtcConn){const o=rtcConn;rtcConn=null;try{o.close();}catch(e){}}
+  if(rtcPeer&&rtcPeer.open)dial();else startPeer();
+};
+pairIn.addEventListener('keydown',e=>{if(e.key==='Enter')$('pairGo').click();});
+let fsTried=false;
+addEventListener('pointerup',()=>{if(fsTried||!ws)return;fsTried=true;try{const el=document.documentElement,f=el.requestFullscreen||el.webkitRequestFullscreen;
+  if(f)Promise.resolve(f.call(el)).then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape')).catch(()=>{});}catch(e){}},true);
+setInterval(()=>{
+  if(ws&&ws.readyState===1)
+    ws.send(cmd().join(','));
+},40);
+setInterval(()=>{if(ws&&ws.readyState===1)ws.send('Q,'+Math.round(performance.now()));},1000);   // 延遲探測
+setInterval(()=>{
+  const open=DEMO||(ws&&ws.readyState===1),fresh=DEMO||Date.now()-lastT<1500;
+  $('dot').style.background=open?(fresh?'var(--ok)':'var(--am)'):'var(--er)';
+  $('link').textContent=DEMO?'示範模式':(open?(fresh?'已連線':'底盤無回應'):'連線中…');
+  if(open&&!fresh){HZ={m:['底盤無回應，請檢查 UART 接線'],cls:'bad'};renderWarn();}
+},400);
+if(DEMO){
+  camCap=1;let ph=0;
+  setInterval(()=>{   // 示範用假影像 (走廊透視 + 移動線)，畫質越低越模糊
+    if(!S.camOn)return;
+    const w=S.camRes?640:320,h=S.camRes?480:240;if(cv.width!==w){cv.width=w;cv.height=h;}
+    const sc=0.35+S.camQ/95*0.65,tw=Math.max(40,Math.round(w*sc)),th=Math.round(tw*h/w),oc=document.createElement('canvas');oc.width=tw;oc.height=th;
+    const o=oc.getContext('2d');ph=(ph+0.04)%1;
+    let g=o.createLinearGradient(0,0,0,th);g.addColorStop(0,'#27384d');g.addColorStop(.5,'#516a85');g.addColorStop(.5,'#3b3f46');g.addColorStop(1,'#1f2227');o.fillStyle=g;o.fillRect(0,0,tw,th);
+    o.strokeStyle='#c9d4e2';o.lineWidth=Math.max(1,tw/160);
+    for(const f of [-1,-.5,.5,1]){o.beginPath();o.moveTo(tw/2,th*.5);o.lineTo(tw/2+f*tw*.9,th);o.stroke();}
+    o.strokeStyle='#facc15';for(let i=0;i<6;i++){const t=((i+ph)/6),y=th*.5+t*t*th*.5;o.beginPath();o.moveTo(tw/2-t*tw*.04,y);o.lineTo(tw/2+t*tw*.04,y);o.stroke();}
+    o.fillStyle='#fff';o.font=Math.round(th/12)+'px sans-serif';o.fillText('示範影像 '+(S.camRes?'640×480':'320×240')+' q'+S.camQ,tw*.04,th*.96);
+    cx.imageSmoothingEnabled=true;cx.drawImage(oc,0,0,w,h);lastFrameT=Date.now();nFr++;nBytes+=Math.round(w*h*sc*0.06);
+  },Math.round(1000/Math.max(3,Math.min(S.camFps,15))));
+  setInterval(()=>{
+  const c=cmd(),lin=c[0]*c[4]/100,al=Math.abs(lin),spin=(30+0.25*al)*c[5]/100,mn=c[7]/100,k=MAX_RPM/100;
+  const cap=Math.max(al*(1-mn)/(1+mn),spin*(1-Math.min(1,al/30))),rot=clampv(S.st/100*spin,-cap,cap);
+  let L=lin+rot,R=lin-rot;const m=Math.max(Math.abs(L),Math.abs(R)),lw=Math.max(c[4],30);if(m>lw){L*=lw/m;R*=lw/m;}
+  const wm=window.DEMO_WM||((Math.abs(L)+Math.abs(R))>1?'0000':'2222');   // 示範: 有油門=驅動, 沒油門=短路煞車
+  onTel(['T',L*k,R*k,L*k,R*k].concat(window.DEMO_D,[window.DEMO_F,lin,wm]).join(','));
+},100);}else conn();
+if(DEMO)showPair(false);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){S.p=N;S.locked=false;S.st=0;S.opp=0;S.drag=false;S.gdir=0;S.hint=0;draw();}});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
+draw();
+</script></body></html>

@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RC4WD 4WD 模擬器</title>
+<style>
+:root{--bg:#0b0f14;--pn:rgba(19,26,35,.88);--pn2:#1b2431;--ln:#2a3548;--tx:#eaf0f7;--mu:#8b98a9;--ac:#2f8cff;--ok:#22c55e;--am:#f59e0b;--er:#ef4444;--bl:#38bdf8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);overflow:hidden;
+ font:14px/1.45 system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+select{font:inherit;font-size:13px;font-weight:600;color:var(--tx);background:var(--pn2);border:1px solid var(--ln);border-radius:10px;padding:6px 8px}
+button{font:inherit;font-size:13px;font-weight:600;color:var(--tx);background:var(--pn2);border:1px solid var(--ln);border-radius:10px;padding:6px 11px;cursor:pointer}
+button:hover{border-color:var(--ac)}button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+#tl{position:fixed;left:12px;top:12px;width:300px;padding:14px}
+#tl h1{font-size:15px;margin:0 0 2px}
+#tl .st{display:flex;align-items:center;gap:8px;font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--am);flex:none}
+#qr{margin:10px 0 8px;display:flex;justify-content:center}
+#qr>div{background:#fff;padding:8px;border-radius:10px;line-height:0}
+#qr img,#qr canvas{display:block}
+#url{word-break:break-all;font-size:12px;color:var(--mu);user-select:all}
+#code{font:700 22px/1 ui-monospace,Consolas,monospace;letter-spacing:.18em;text-align:center;margin:4px 0 6px;color:var(--bl);user-select:all}
+.mu{color:var(--mu);font-size:12.5px}
+ol{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--mu)}
+#tl.mini{width:auto;padding:8px 12px}#tl.mini .full{display:none}
+#tr{position:fixed;right:12px;top:12px;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:min(520px,60vw);padding:8px}
+#bl{position:fixed;left:12px;bottom:12px;padding:12px 14px;width:min(430px,calc(100vw - 24px))}
+#spd{font:700 38px/1 system-ui;letter-spacing:-.02em}#spd small{font-size:13px;color:var(--mu);font-weight:500;margin-left:4px}
+#top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+#src{font-size:12.5px;color:var(--mu);text-align:right}
+#whl{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.w{border:2px solid #22c55e;border-radius:9px;padding:4px 8px;display:flex;justify-content:space-between;align-items:baseline;background:rgba(0,0,0,.18)}
+.w b{font-size:12px;color:var(--mu);font-weight:600}.w span{font:700 15px ui-monospace,Consolas,monospace}
+.w.s1{border-color:#3b82f6}.w.s2{border-color:#ef4444}.w.s3{border-color:#f97316}
+#sn{display:flex;gap:6px;margin-top:8px}
+#sn div{flex:1;text-align:center;border-radius:8px;padding:3px 0;font:700 13px ui-monospace,Consolas,monospace;background:rgba(0,0,0,.2);border-bottom:3px solid #566274}
+#sn small{display:block;font:500 10.5px system-ui;color:var(--mu)}
+#warn{margin-top:8px;border-radius:9px;padding:5px 10px;text-align:center;font-weight:700;font-size:13px;background:#10321c;color:#86efac;border:1px solid #166534}
+#warn.wn{background:#33260a;color:#fcd34d;border-color:#92400e}#warn.bad{background:#3b1212;color:#fca5a5;border-color:#991b1b}
+#br{position:fixed;right:12px;bottom:12px;padding:8px;width:min(288px,44vw)}
+#br canvas{width:100%;display:block;border-radius:8px;background:#000;aspect-ratio:4/3}
+#br .cap{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mu);margin-top:5px}
+#keys{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:11.5px;color:#334;background:rgba(255,255,255,.55);border-radius:8px;padding:2px 10px;pointer-events:none;white-space:nowrap}
+#msg{position:fixed;left:50%;top:14px;transform:translateX(-50%);padding:8px 14px;font-weight:700;display:none;max-width:70vw;text-align:center}
+@media(max-width:820px){#br{display:none}#tr{max-width:46vw}#keys{display:none}}
+</style></head><body>
+<canvas id="gl"></canvas>
+
+<div id="tl" class="card">
+  <div class="st"><span class="dot" id="dot"></span><span id="stx">準備中…</span><button id="tlToggle" style="margin-left:auto;padding:2px 8px">QR</button></div>
+  <div class="full">
+    <div id="qr"></div>
+    <div id="code">······</div>
+    <div id="url"></div>
+    <ol>
+      <li>手機（和電腦同一個 Wi-Fi 最穩）掃 QR 或開上方網址</li>
+      <li>手機<b>橫放</b>，推油門／拖方向就能開</li>
+      <li>沒手機也行：鍵盤 <b>W S</b> 油門、<b>A D</b> 轉向</li>
+    </ol>
+  </div>
+</div>
+
+<div id="tr" class="card">
+  <button data-v="chase" class="on">追尾 1</button><button data-v="top">全場 2</button><button data-v="fpv">車載 3</button>
+  <button id="bSnd">🔊 聲音</button><button id="bFan">超音波</button><button id="bTrail">痕跡</button>
+  <select id="netSel" title="模擬 Wi-Fi 品質：延遲、抖動、偶發卡頓"><option value="0">網路：理想</option><option value="1">網路：一般 Wi-Fi</option><option value="2">網路：偏差</option><option value="3">網路：很差</option><option value="4">網路：爆差</option></select><select id="batSel" title="電池剩餘電量 (會隨行駛耗電)"><option value="100">電池 100%</option><option value="75">電池 75%</option><option value="50">電池 50%</option><option value="25">電池 25%</option><option value="12">電池 12%（低）</option><option value="5">電池 5%（極低）</option><option value="-1">未接電量計</option></select><button id="bLay">場地：障礙場</button><button id="bReset">重置 R</button>
+</div>
+
+<div id="bl" class="card">
+  <div id="top"><div id="spd">0.0<small>km/h</small></div><div id="src">—</div></div>
+  <div id="whl"></div>
+  <div id="sn"></div>
+  <div id="warn">● 系統正常</div>
+</div>
+
+<div id="br" class="card"><canvas id="pip" width="320" height="240"></canvas>
+  <div class="cap"><span>手機收到的鏡頭畫面</span><span id="pipInfo">—</span></div></div>
+
+<div id="keys">W/S 油門　A/D 轉向　Space 放油門　M 模式　O 避障　C 切視角　R 重置　拖曳旋轉視角</div>
+<div id="msg" class="card"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="js/sim-core.js"></script>
+<script src="js/net.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = RC.clamp, N4 = RC.NAMES;
+const store = { get(k, d) { try { const v = localStorage.getItem('rc4wdsim_' + k); return v === null ? d : v; } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem('rc4wdsim_' + k, v); } catch (e) {} } };
+function toast(t, ms) { const m = $('msg'); m.textContent = t; m.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => { m.style.display = 'none'; }, ms || 2200); }
+
+/* =============== 模擬核心 =============== */
+const sim = new RC.Sim(store.get('layout', 'course'));
+window.__sim = sim;
+
+/* =============== three.js 場景 =============== */
+const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const SKY = '#cfe0f2';
+scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, 20, 55);
+scene.add(new THREE.HemisphereLight('#ffffff', '#8d97a8', 0.9));
+const sun = new THREE.DirectionalLight('#ffffff', 0.75);
+sun.position.set(6, 12, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
+Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 8, bottom: -8, near: 1, far: 40 }); scene.add(sun);
+
+const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.65, metalness: 0.05 }, o || {}));
+const mesh = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; o.receiveShadow = true; return o; };
+
+/* ---- 地板 / 場地 ---- */
+function floorTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = '#e6eaf0'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2200; i++) { x.fillStyle = 'rgba(' + (90 + Math.random() * 70 | 0) + ',' + (100 + Math.random() * 70 | 0) + ',' + (115 + Math.random() * 70 | 0) + ',' + Math.random() * 0.07 + ')'; x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  x.strokeStyle = '#b7c0cd'; x.lineWidth = 3; x.strokeRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+let worldGroup = null, trailCv = null, trailCx = null, trailTex = null, trailDirty = false, prevW = null;
+const TR_PPM = 64;
+function buildWorld() {
+  if (worldGroup) scene.remove(worldGroup);
+  const g = worldGroup = new THREE.Group(); scene.add(g);
+  const W = sim.world.W, H = sim.world.H;
+  const outer = mesh(new THREE.PlaneGeometry(160, 160), M('#9eaabb', { roughness: 1 }), 0, -0.02, 0); outer.rotation.x = -Math.PI / 2; outer.castShadow = false; g.add(outer);
+  const ft = floorTex(); ft.repeat.set(W, H);
+  const fl = mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshLambertMaterial({ map: ft }), 0, 0, 0); fl.rotation.x = -Math.PI / 2; fl.castShadow = false; g.add(fl);
+  // 起點墊
+  const s = sim.world.layout.start;
+  const pad = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ color: '#2f8cff', transparent: true, opacity: 0.25 }));
+  pad.rotation.x = -Math.PI / 2; pad.position.set(s.x, 0.002, -s.y); pad.rotation.z = s.th; g.add(pad);
+  // 輪胎痕跡 (畫在透明貼圖上)
+  trailCv = document.createElement('canvas'); trailCv.width = Math.round(W * TR_PPM); trailCv.height = Math.round(H * TR_PPM);
+  trailCx = trailCv.getContext('2d'); trailCx.lineCap = 'round';
+  trailTex = new THREE.CanvasTexture(trailCv);
+  const tp = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: trailTex, transparent: true, depthWrite: false }));
+  tp.rotation.x = -Math.PI / 2; tp.position.y = 0.004; tp.visible = trailsOn; tp.name = 'trail'; g.add(tp); prevW = null;
+  // 障礙物
+  for (const o of sim.world.obs) {
+    if (o.wall) {
+      const wall = mesh(new THREE.BoxGeometry(o.w, 1.0, o.h), M('#f3f5f9', { roughness: 0.9 }), o.x, 0.5, -o.y); wall.castShadow = false; g.add(wall);
+      const cap = mesh(new THREE.BoxGeometry(o.w + 0.01, 0.05, o.h + 0.01), M('#2f8cff'), o.x, 1.0, -o.y); cap.castShadow = false; g.add(cap);
+    } else if (o.t === 'r') {
+      const geo = new THREE.BoxGeometry(o.w, o.height, o.h);
+      const b = mesh(geo, M(o.color || '#c28a4a'), o.x, o.height / 2, -o.y); g.add(b);
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }));
+      e.position.copy(b.position); g.add(e);
+    } else if (o.kind === 'cone') {
+      const h = o.height, r = o.r, grp = new THREE.Group(); grp.position.set(o.x, 0, -o.y);
+      grp.add(mesh(new THREE.ConeGeometry(r, h, 24), M('#ff6a13'), 0, h / 2, 0));
+      const f0 = 0.35, f1 = 0.55;
+      grp.add(mesh(new THREE.CylinderGeometry(r * (1 - f1) + 0.002, r * (1 - f0) + 0.002, h * (f1 - f0), 24), M('#ffffff'), 0, h * (f0 + f1) / 2, 0));
+      grp.add(mesh(new THREE.BoxGeometry(r * 2.4, 0.01, r * 2.4), M('#e25200'), 0, 0.005, 0));
+      g.add(grp);
+    } else {
+      const h = o.height, r = o.r, grp = new THREE.Group(); grp.position.set(o.x, 0, -o.y);
+      grp.add(mesh(new THREE.CylinderGeometry(r, r, h, 32), M('#2f6bd1'), 0, h / 2, 0));
+      for (const yy of [0.25, 0.75]) grp.add(mesh(new THREE.CylinderGeometry(r + 0.006, r + 0.006, 0.03, 32), M('#1f4a99'), 0, h * yy, 0));
+      grp.add(mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.9, 0.01, 32), M('#193b7a'), 0, h + 0.003, 0));
+      g.add(grp);
+    }
+  }
+  clearTrails();
+}
+let trailsOn = store.get('trail', '1') === '1';
+function clearTrails() { if (trailCx) { trailCx.clearRect(0, 0, trailCv.width, trailCv.height); trailDirty = true; } prevW = null; }
+
+/* ---- 小車模型 (車頭 = +X, 左 = -Z) ---- */
+const car = (function () {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body); scene.add(root);
+  const add = (g, m, x, y, z) => { const o = mesh(g, m, x, y, z); body.add(o); return o; };
+  add(new THREE.BoxGeometry(0.30, 0.008, 0.16), M('#232a33', { roughness: 0.4, metalness: 0.4 }), 0, 0.055, 0);
+  for (const z of [-0.07, 0.07]) add(new THREE.BoxGeometry(0.30, 0.022, 0.012), M('#c0392b', { metalness: 0.5, roughness: 0.35 }), 0, 0.064, z);
+  for (const sx of [1, -1]) for (const sz of [1, -1]) add(new THREE.BoxGeometry(0.06, 0.026, 0.032), M('#a3acb8', { metalness: 0.7, roughness: 0.35 }), sx * 0.11, 0.052, sz * 0.092);
+  const batt = add(new THREE.BoxGeometry(0.135, 0.032, 0.045), M('#f0b400'), -0.03, 0.075, 0);
+  add(new THREE.BoxGeometry(0.05, 0.0335, 0.046), M('#16181d'), -0.03, 0.075, 0);
+  // 上層板 + 立柱
+  const deck = add(new THREE.BoxGeometry(0.26, 0.004, 0.15), M('#8ec5ff', { transparent: true, opacity: 0.4, roughness: 0.2 }), 0, 0.105, 0); deck.castShadow = false;
+  for (const sx of [1, -1]) for (const sz of [1, -1]) add(new THREE.CylinderGeometry(0.004, 0.004, 0.046, 8), M('#cfd6df', { metalness: 0.8 }), sx * 0.115, 0.082, sz * 0.065);
+  add(new THREE.BoxGeometry(0.051, 0.004, 0.021), M('#1f8a4c'), 0.03, 0.111, 0.035);       // Pico
+  add(new THREE.BoxGeometry(0.04, 0.006, 0.025), M('#161a20'), 0.075, 0.112, -0.03);        // ESP32
+  add(new THREE.BoxGeometry(0.012, 0.002, 0.02), M('#d4af37', { metalness: 0.9 }), 0.099, 0.116, -0.03);
+  for (const z of [-0.05, 0.05]) add(new THREE.BoxGeometry(0.022, 0.003, 0.022), M('#c0392b'), -0.045, 0.1085, z);  // TB6612
+  add(new THREE.BoxGeometry(0.10, 0.022, 0.045), M('#6d4c41'), -0.065, 0.118, 0);            // 行動電源
+  const led = add(new THREE.SphereGeometry(0.0045, 12, 8), new THREE.MeshStandardMaterial({ color: '#22c55e', emissive: '#22c55e', emissiveIntensity: 1.2 }), 0.105, 0.113, 0.03); led.castShadow = false;
+  // 超音波 (位置/朝向與 SONAR_MOUNT 對應)
+  RC.SONAR_MOUNT.forEach((m, i) => {
+    const g = new THREE.Group(); g.position.set(m.x, 0.072, -m.y); g.rotation.y = m.a; body.add(g);
+    const pcb = mesh(new THREE.BoxGeometry(0.008, 0.022, 0.046), M('#1565c0'), 0, 0, 0); g.add(pcb);
+    for (const z of [-0.012, 0.012]) { const c = mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.012, 16), M('#c4cbd4', { metalness: 0.8, roughness: 0.3 }), 0.009, 0, z); c.rotation.z = Math.PI / 2; g.add(c); }
+  });
+  // 鏡頭
+  add(new THREE.BoxGeometry(0.018, 0.018, 0.018), M('#111'), 0.15, 0.092, 0);
+  const lens = mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.008, 12), M('#222', { metalness: 0.9 }), 0.162, 0.092, 0); lens.rotation.z = Math.PI / 2; body.add(lens);
+  // 輪子
+  const wheels = [];
+  RC.NAMES.forEach((n, i) => {
+    const sx = (n[0] === 'F') ? 1 : -1, sz = (n[1] === 'L') ? -1 : 1;
+    const holder = new THREE.Group(); holder.position.set(sx * 0.11, 0.04, sz * 0.125); body.add(holder);
+    const spin = new THREE.Group(); holder.add(spin);
+    const tire = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.035, 32), M('#1b1b1d', { roughness: 0.95 }), 0, 0, 0); tire.rotation.x = Math.PI / 2; spin.add(tire);
+    const KN = 18;
+    for (let k = 0; k < KN; k++) {
+      const a = k / KN * Math.PI * 2, kn = mesh(new THREE.BoxGeometry(0.008, 0.012, 0.034), M('#111214', { roughness: 1 }), Math.cos(a) * 0.0415, Math.sin(a) * 0.0415, 0);
+      kn.rotation.z = a; kn.castShadow = false; spin.add(kn);
+    }
+    const hub = mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.038, 6), M('#cfd5dd', { metalness: 0.7, roughness: 0.3 }), 0, 0, 0); hub.rotation.x = Math.PI / 2; spin.add(hub);
+    const cap = mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.04, 12), M('#c0392b'), 0, 0, 0); cap.rotation.x = Math.PI / 2; spin.add(cap);
+    wheels.push(spin);
+  });
+  // 車載鏡頭 (給手機看的畫面)
+  const fpv = new THREE.PerspectiveCamera(70, 4 / 3, 0.02, 60); fpv.position.set(0.17, 0.10, 0); fpv.rotation.y = -Math.PI / 2; body.add(fpv);
+  // 超音波扇形 (在 root，不跟著俯仰/側傾)
+  const fans = RC.SONAR_MOUNT.map(m => {
+    const sh = new THREE.Shape(); const a = 15 * Math.PI / 180; sh.moveTo(0, 0); sh.absarc(0, 0, 1, -a, a, false); sh.lineTo(0, 0);
+    const geo = new THREE.ShapeGeometry(sh, 24); geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ color: '#22c55e', transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
+    const f = new THREE.Mesh(geo, mat); f.position.set(m.x, 0.012, -m.y); f.rotation.y = m.a; root.add(f); return f;
+  });
+  return { root, body, wheels, fans, led, fpv };
+})();
+let fansOn = store.get('fan', '1') === '1';
+
+function dCol(d) { return d >= 400 ? '#566274' : d <= 20 ? '#ef4444' : d <= 40 ? '#f97316' : d < 150 ? '#facc15' : '#22c55e'; }
+function syncCar() {
+  const c = sim.chassis;
+  car.root.position.set(c.x, 0, -c.y); car.root.rotation.y = c.th;
+  car.body.rotation.z = clamp(c.ax * 0.010, -0.06, 0.06);     // 加速抬頭 / 煞車點頭
+  car.body.rotation.x = clamp(c.ay * 0.010, -0.07, 0.07);     // 轉彎外傾
+  for (let i = 0; i < 4; i++) car.wheels[i].rotation.z = -c.ang[i];
+  const d = sim.pico.sonar.dist;
+  for (let i = 0; i < 4; i++) {
+    const f = car.fans[i], L = d[i] >= 400 ? 1.5 : clamp(d[i] / 100, 0.03, 1.5);
+    f.visible = fansOn; f.scale.set(L, 1, L); f.material.color.set(dCol(d[i])); f.material.opacity = d[i] >= 400 ? 0.12 : 0.3;
+  }
+  const fl = sim.pico.flags, col = (fl & (1 | 2 | 8)) ? '#ef4444' : (fl & 4) ? '#f59e0b' : '#22c55e';
+  car.led.material.color.set(col); car.led.material.emissive.set(col);
+  car.root.updateMatrixWorld(true);
+}
+/* 輪胎痕跡: 打滑時才畫 */
+function updateTrails() {
+  if (!trailCx) return;
+  const c = sim.chassis, co = Math.cos(c.th), si = Math.sin(c.th), W = sim.world.W, H = sim.world.H;
+  const cur = [];
+  for (let i = 0; i < 4; i++) {
+    const lx = (i < 2 ? 1 : -1) * 0.11, ly = (i % 2 === 0 ? 1 : -1) * 0.125;
+    const wx = c.x + lx * co - ly * si, wy = c.y + lx * si + ly * co;
+    cur.push([(wx + W / 2) * TR_PPM, (H / 2 - wy) * TR_PPM]);
+  }
+  if (prevW) {
+    for (let i = 0; i < 4; i++) {
+      const s = c.slip[i]; if (s < 0.2) continue;
+      trailCx.strokeStyle = 'rgba(25,28,34,' + Math.min(0.5, s * 0.35).toFixed(2) + ')'; trailCx.lineWidth = 2.4;
+      trailCx.beginPath(); trailCx.moveTo(prevW[i][0], prevW[i][1]); trailCx.lineTo(cur[i][0], cur[i][1]); trailCx.stroke(); trailDirty = true;
+    }
+  }
+  prevW = cur;
+}
+setInterval(() => { if (trailDirty && trailTex) { trailTex.needsUpdate = true; trailDirty = false; } }, 200);
+
+/* ---- 主相機：追尾 / 全場 / 車載 ---- */
+const cam = new THREE.PerspectiveCamera(58, 1, 0.02, 200);
+let view = store.get('view', 'chase'), orbAz = 0, orbEl = 0, orbD = 1, lastDrag = -1e9, smTh = 0, camInit = false;
+const camPos = new THREE.Vector3(), tmpP = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
+function lerpAng(a, b, t) { let d = ((b - a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return a + d * t; }
+function updateCamera(dt) {
+  const c = sim.chassis, px = c.x, pz = -c.y;
+  if (view === 'chase') {
+    cam.fov = 58 + Math.min(10, Math.abs(c.vx) * 4); cam.updateProjectionMatrix();
+    if (performance.now() - lastDrag > 2500) { const k = Math.min(1, dt * 2); orbAz -= orbAz * k; orbEl -= orbEl * k; }
+    if (!camInit) smTh = c.th;
+    smTh = lerpAng(smTh, c.th, 1 - Math.exp(-dt * 4));
+    const dist = 0.95 * orbD, el = 0.40 + orbEl, az = smTh + Math.PI + orbAz;
+    tmpP.set(px + Math.cos(az) * dist * Math.cos(el), 0.05 + dist * Math.sin(el), pz - Math.sin(az) * dist * Math.cos(el));
+    if (!camInit) { camPos.copy(tmpP); camInit = true; } else camPos.lerp(tmpP, 1 - Math.exp(-dt * 9));
+    cam.position.copy(camPos); cam.lookAt(px + Math.cos(c.th) * 0.15, 0.06, pz - Math.sin(c.th) * 0.15);
+  } else if (view === 'top') {
+    cam.fov = 50; cam.updateProjectionMatrix();
+    const t = Math.tan(25 * Math.PI / 180), h = Math.max(sim.world.H * 0.52 / t, sim.world.W * 0.52 / (t * cam.aspect));
+    cam.position.set(0, h, 0.001); cam.lookAt(0, 0, 0);
+  } else {
+    cam.fov = 78; cam.updateProjectionMatrix();
+    car.fpv.getWorldPosition(tmpP); car.fpv.getWorldQuaternion(tmpQ); cam.position.copy(tmpP); cam.quaternion.copy(tmpQ);
+  }
+}
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+function setView(v) {
+  view = v; store.set('view', v); camInit = false;
+  document.querySelectorAll('#tr [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+}
+const gl = $('gl'); let drag = null;
+gl.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; try { gl.setPointerCapture(e.pointerId); } catch (_) {} });
+gl.addEventListener('pointermove', e => {
+  if (!drag || view !== 'chase') return;
+  orbAz -= (e.clientX - drag.x) * 0.006; orbEl = clamp(orbEl + (e.clientY - drag.y) * 0.004, -0.35, 1.0);
+  drag = { x: e.clientX, y: e.clientY }; lastDrag = performance.now();
+});
+gl.addEventListener('pointerup', () => { drag = null; });
+gl.addEventListener('wheel', e => { e.preventDefault(); orbD = clamp(orbD * (1 + Math.sign(e.deltaY) * 0.08), 0.4, 4); }, { passive: false });
+
+/* ---- 車載鏡頭 → 手機 ---- */
+const pip = $('pip'), pipCx = pip.getContext('2d');
+let rt = null, rtW = 0, pixBuf = null, imgData = null;
+function renderFpv(w, h) {                       // 用同一個 renderer 畫到離屏 render target，再讀回 2D canvas
+  if (!rt || rtW !== w) {
+    if (rt) rt.dispose();
+    rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    rtW = w; pip.width = w; pip.height = h; pixBuf = new Uint8Array(w * h * 4); imgData = pipCx.createImageData(w, h);
+  }
+  renderer.setRenderTarget(rt); renderer.render(scene, car.fpv); renderer.setRenderTarget(null);
+  renderer.readRenderTargetPixels(rt, 0, 0, w, h, pixBuf);
+  const d = imgData.data, st = w * 4;
+  for (let y = 0; y < h; y++) d.set(pixBuf.subarray((h - 1 - y) * st, (h - y) * st), y * st);   // WebGL 原點在左下，翻轉
+  pipCx.putImageData(imgData, 0, 0);
+}
+const camSet = { on: 1, res: 0, q: 50, fps: 15 };
+let camT = 0, camBusy = false, frames = 0, bytes = 0, pipFps = '';
+function camTick(now) {
+  const phoneWants = link.open && camSet.on, interval = 1000 / (phoneWants ? clamp(camSet.fps, 3, 20) : 8);
+  if (now - camT < interval || document.hidden) return; camT = now;
+  const stamp = Math.round(performance.now()) & 0xFFFF;
+  renderFpv(camSet.res ? 640 : 320, camSet.res ? 480 : 240);
+  if (!phoneWants || camBusy) return;
+  const dc = link.conn && link.conn.dataChannel;
+  if (dc && dc.bufferedAmount > 96 * 1024) return;                     // 傳不出去就丟幀，不要拖慢控制
+  camBusy = true;
+  pip.toBlob(b => {
+    if (!b) { camBusy = false; return; }
+    b.arrayBuffer().then(ab => { sendTxt('F,' + stamp); sendBin(ab); frames++; bytes += ab.byteLength; }).finally(() => { camBusy = false; });
+  }, 'image/jpeg', clamp(camSet.q, 10, 95) / 100);
+}
+setInterval(() => { pipFps = (link.open && camSet.on) ? (frames + ' fps · ' + (frames ? (bytes / 1024 / frames).toFixed(0) : 0) + ' KB/張') : (camSet.on ? '預覽' : '鏡頭已關閉'); $('pipInfo').textContent = pipFps; frames = 0; bytes = 0; }, 1000);
+
+/* =============== 連線 (PeerJS / WebRTC) =============== */
+const link = { open: false, conn: null, peer: null, lastCmd: 0, rtt: 0, code: '' };
+function setStatus(txt, color) { $('stx').textContent = txt; $('dot').style.background = color || 'var(--am)'; }
+/* ---- 模擬網路品質 (單程延遲 / 抖動 / 偶發卡頓 = TCP 重傳)，保持順序 ---- */
+const NETP = [{ n: '理想', lat: 0, jit: 0, spike: 0 }, { n: '一般 Wi-Fi', lat: 12, jit: 8, spike: 0.005 }, { n: '偏差', lat: 50, jit: 40, spike: 0.03 },
+              { n: '很差', lat: 120, jit: 100, spike: 0.08 }, { n: '爆差', lat: 250, jit: 200, spike: 0.15 }];
+let netIdx = +store.get('net', '0') || 0;
+const lastDue = { in: 0, out: 0 };
+function viaNet(dir, fn) {
+  const P = NETP[netIdx]; if (!P.lat && !P.jit && !P.spike) { fn(); return; }
+  let d = P.lat + (Math.random() * 2 - 1) * P.jit; if (d < 0) d = 0; if (Math.random() < P.spike) d += 250 + Math.random() * 150;
+  const due = Math.max(lastDue[dir], performance.now() + d); lastDue[dir] = due;
+  setTimeout(fn, Math.max(0, due - performance.now()));
+}
+function sendTxt(s) { viaNet('out', () => { try { if (link.open) link.conn.send(s); } catch (e) {} }); }
+function sendBin(ab) { viaNet('out', () => { try { if (link.open) link.conn.send(ab); } catch (e) {} }); }
+function ctrlUrl() { return new URL('controller.html?r=' + link.code, location.href).href; }
+function showPair() {
+  $('code').textContent = link.code.toUpperCase(); $('url').textContent = ctrlUrl();
+  const q = $('qr'); q.innerHTML = '<div></div>';
+  try { new QRCode(q.firstChild, { text: ctrlUrl(), width: 168, height: 168, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); }
+  catch (e) { q.innerHTML = '<span class="mu">（QR 函式庫載入失敗，請手動輸入網址）</span>'; }
+}
+function onData(d) {
+  if (typeof d !== 'string') return;
+  link.lastCmd = performance.now();
+  const c0 = d.charCodeAt(0);
+  if (c0 === 65 && d[1] === ',') { sim.pico.ao = d[2] === '1' ? 1 : 0; return; }               // A,0|1
+  if (c0 === 86 && d[1] === ',') { const p = d.split(','); camSet.on = +p[1] ? 1 : 0; camSet.res = +p[2] ? 1 : 0; camSet.q = +p[3] || 50; camSet.fps = +p[4] || 15; return; }  // V,on,res,q,fps
+  if (c0 === 81 && d[1] === ',') { sendTxt('Q,' + d.slice(2) + ',' + (Math.round(performance.now()) & 0xFFFF)); return; }                // Q,ts → Q,ts,車端時鐘 (同 ESP32)
+  if (c0 === 80 && d[1] === ',') { const t = +d.slice(2); if (t) link.rtt = Math.round(performance.now() - t); return; }            // P,ts 回聲
+  const a = d.split(',').map(Number);
+  if (a.length >= 6 && a.every(isFinite)) { sim.onCmd(a); lastCmdSrc = 'phone'; lastCmdArr = a; }
+}
+let lastCmdSrc = '', lastCmdArr = [0, 0, 0, 0, 80, 100, 1, 40];
+function attach(conn) {
+  if (link.conn && link.conn !== conn) { try { link.conn.close(); } catch (e) {} }
+  link.conn = conn;
+  conn.on('open', () => {
+    link.open = true; setStatus('手機已連線', 'var(--ok)'); $('tl').classList.add('mini'); store.set('mini', '1');
+    sendTxt('cam:1'); toast('📱 手機已連上，開始遙控！');
+  });
+  conn.on('data', d => viaNet('in', () => onData(d)));
+  const lost = () => { if (link.conn !== conn) return; link.open = false; link.conn = null; setStatus('手機已斷線，等待重新連線…'); $('tl').classList.remove('mini'); };
+  conn.on('close', lost); conn.on('error', lost);
+}
+async function startHost() {
+  setStatus('載入連線函式庫…');
+  let Peer;
+  try { Peer = await RCNet.loadPeer(); } catch (e) { setStatus('連線函式庫載入失敗（仍可用鍵盤）', 'var(--er)'); $('code').textContent = '離線'; return; }
+  let tries = 0;
+  const make = (code) => {
+    link.code = code; store.set('room', code); showPair();
+    const peer = link.peer = new Peer(RCNet.PREFIX + code, RCNet.peerOptions());
+    peer.on('open', () => { setStatus('等待手機連線…'); });
+    peer.on('connection', c => attach(c));
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
+    peer.on('error', err => {
+      if (err.type === 'unavailable-id' && tries++ < 5) { try { peer.destroy(); } catch (e) {} make(RCNet.newCode()); return; }
+      if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed') { setStatus('連不上配對伺服器（PeerJS），稍後重試…', 'var(--er)'); return; }
+      if (err.type === 'peer-unavailable') return;
+      console.warn('peer error', err);
+    });
+  };
+  make(RCNet.cleanCode(RCNet.param('room')) || RCNet.cleanCode(store.get('room', '')) || RCNet.newCode());
+}
+/* 遙測 / 撞擊 / 延遲探測 */
+let noGauge = false;
+sim.onTel = s => sendTxt(s + ',' + (2 + Math.round(Math.random() * 3)) + ',' + (noGauge ? 0 : Math.round(sim.battery.V * 1000)));   // 尾端補上 ESP⇄Pico UART 往返 (模擬 2~5ms)
+sim.onBump = lv => { sendTxt('B,' + lv.toFixed(2)); thud(lv); };
+setInterval(() => sendTxt('P,' + performance.now().toFixed(0)), 2000);
+setInterval(() => {   // 手機分頁被關掉時 WebRTC 要好幾秒才會通知；這裡 3 秒沒收到任何資料就當斷線
+  if (link.open && performance.now() - link.lastCmd > 3000) { const c = link.conn; link.open = false; link.conn = null; try { c.close(); } catch (e) {} setStatus('手機已斷線，等待重新連線…'); $('tl').classList.remove('mini'); }
+}, 1000);
+
+/* =============== 鍵盤操控 (沒有手機時使用) =============== */
+const keys = {}; let kThr = 0, kSt = 0, kMode = 1, kAo = 1;
+const PDEF = [{ sens: 60, lim: 100, mi: 55 }, { sens: 100, lim: 80, mi: 40 }, { sens: 130, lim: 60, mi: 20 }];
+const MN = ['直線', '普通', '過彎'];
+addEventListener('keydown', e => {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase(); keys[k] = true; audioStart();
+  if (k === 'r') resetAll(); else if (k === 'c') setView({ chase: 'top', top: 'fpv', fpv: 'chase' }[view]);
+  else if (k === '1') setView('chase'); else if (k === '2') setView('top'); else if (k === '3') setView('fpv');
+  else if (k === 'm') { kMode = (kMode + 1) % 3; toast('模式：' + MN[kMode]); }
+  else if (k === 'o') { kAo ^= 1; sim.pico.ao = kAo; toast('避障：' + (kAo ? '開' : '關')); }
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+setInterval(() => {
+  const any = k => keys[k];
+  const up = any('w') || any('arrowup'), dn = any('s') || any('arrowdown'), lf = any('a') || any('arrowleft'), rt = any('d') || any('arrowright');
+  const tT = keys[' '] ? 0 : (up ? 100 : dn ? -100 : 0), tS = rt ? 100 : lf ? -100 : 0;
+  const rate = tT === 0 ? 30 : 12;                         // 40ms 一次: 推到底約 0.35s，放手約 0.13s
+  kThr += clamp(tT - kThr, -rate, rate); kSt += clamp(tS - kSt, -40, 40);
+  const phoneActive = link.open && performance.now() - link.lastCmd < 600 && lastCmdSrc === 'phone';
+  if (!phoneActive) {            // 手機沒在送指令時，由鍵盤(含全 0 的待機指令)接手
+    const p = PDEF[kMode];
+    lastCmdArr = [Math.round(kThr), Math.round(kSt), 0, 0, p.lim, p.sens, kMode, p.mi]; lastCmdSrc = 'kb';
+    sim.onCmd(lastCmdArr);
+  }
+}, 40);
+
+function resetAll() { sim.resetCar(); clearTrails(); camInit = false; toast('已重置到起點'); }
+
+/* =============== 聲音 =============== */
+let AC = null, eng = null, soundOn = store.get('snd', '1') === '1';
+function audioStart() {
+  if (AC || !soundOn) { if (AC && AC.state === 'suspended' && soundOn) AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const o1 = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
+    o1.type = 'sawtooth'; o2.type = 'triangle'; f.type = 'lowpass'; f.frequency.value = 1100; g.gain.value = 0;
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(AC.destination); o1.start(); o2.start(); eng = { o1, o2, g };
+  } catch (e) { AC = null; }
+}
+function audioUpdate() {
+  if (!AC || !eng) return;
+  const w = sim.pico.w, t = AC.currentTime;
+  let rpm = 0, duty = 0; RC.NAMES.forEach(n => { rpm += Math.abs(sim.chassis.ww[RC.NAMES.indexOf(n)]) * 60 / (2 * Math.PI) / 4; duty += (w[n].mode === 'drive' ? Math.abs(w[n].duty) : 0) / 4; });
+  eng.o1.frequency.setTargetAtTime(70 + rpm * 0.7, t, 0.05); eng.o2.frequency.setTargetAtTime(140 + rpm * 1.5, t, 0.05);
+  eng.g.gain.setTargetAtTime(soundOn ? (rpm > 5 || duty > 0.05 ? 0.012 + Math.min(0.05, rpm / 500 * 0.04 + duty * 0.02) : 0) : 0, t, 0.08);
+}
+function thud(lv) {
+  if (!AC || !soundOn) return;
+  try {
+    const n = AC.sampleRate * 0.12 | 0, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+    const s = AC.createBufferSource(), g = AC.createGain(), f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500;
+    g.gain.value = Math.min(0.5, 0.12 + lv * 0.25); s.buffer = b; s.connect(f); f.connect(g); g.connect(AC.destination); s.start();
+  } catch (e) {}
+}
+
+/* =============== HUD =============== */
+$('whl').innerHTML = RC.NAMES.map(n => '<div class="w" id="w' + n + '"><b>' + n + '</b><span>0</span></div>').join('');
+$('sn').innerHTML = RC.NAMES.map(n => '<div id="d' + n + '"><small>' + n + '</small>--</div>').join('');
+let hudT = 0;
+function hud(now) {
+  if (now - hudT < 100) return; hudT = now;
+  const c = sim.chassis, P = sim.pico;
+  $('spd').firstChild.nodeValue = Math.abs(Math.hypot(c.vx, c.vy) * 3.6).toFixed(1);
+  const act = sim.t - P.lastCmd <= RC.CFG.FAILSAFE_MS;
+  $('src').innerHTML = (link.open ? ('📱 手機　延遲 ' + (link.rtt || '—') + ' ms<br>') : '⌨ 鍵盤<br>') +
+    '🔋 ' + sim.battery.V.toFixed(1) + 'V · ' + Math.round(sim.battery.soc * 100) + '% · ' + sim.battery.I.toFixed(1) + 'A<br>' +
+    (act ? ('油門 ' + (lastCmdArr[0] | 0) + '%　方向 ' + (lastCmdArr[1] | 0) + '　' + MN[P.mode]) : '無指令（失控保護）');
+  RC.NAMES.forEach(n => { const w = P.w[n], e = $('w' + n); e.className = 'w s' + w.code(); e.lastChild.textContent = w.signedRpm() + ' rpm'; });
+  RC.NAMES.forEach((n, i) => { const e = $('d' + n), d = P.sonar.dist[i]; e.lastChild.nodeValue = d >= 400 ? '--' : Math.round(d); e.style.borderBottomColor = dCol(d); });
+  const m = [], fl = P.flags;
+  if (fl & 1) m.push('⚠ 前方障礙'); if (fl & 2) m.push('⚠ 後方障礙'); if (fl & 8) m.push('⚠ 馬達堵轉'); if ((fl & 4) && act === false) m.push('失控保護中');
+  if (!P.ao) m.push('避障關閉');
+  const wn = $('warn'); wn.className = (fl & (1 | 2 | 8)) ? 'bad' : (m.length ? 'wn' : ''); wn.textContent = m.length ? m.join('　') : '● 系統正常';
+}
+
+/* =============== UI 綁定 =============== */
+document.querySelectorAll('#tr [data-v]').forEach(b => b.addEventListener('click', () => setView(b.dataset.v)));
+$('bSnd').onclick = () => { soundOn = !soundOn; store.set('snd', soundOn ? '1' : '0'); $('bSnd').textContent = soundOn ? '🔊 聲音' : '🔇 聲音'; if (soundOn) audioStart(); };
+$('bSnd').textContent = soundOn ? '🔊 聲音' : '🔇 聲音';
+$('bFan').onclick = () => { fansOn = !fansOn; store.set('fan', fansOn ? '1' : '0'); $('bFan').classList.toggle('on', fansOn); }; $('bFan').classList.toggle('on', fansOn);
+$('bTrail').onclick = () => { trailsOn = !trailsOn; store.set('trail', trailsOn ? '1' : '0'); const t = worldGroup.getObjectByName('trail'); if (t) t.visible = trailsOn; $('bTrail').classList.toggle('on', trailsOn); }; $('bTrail').classList.toggle('on', trailsOn);
+$('bReset').onclick = resetAll;
+$('batSel').onchange = e => { const v = +e.target.value; noGauge = v < 0; if (v >= 0) sim.setBattery(v); toast(noGauge ? '模擬：沒接電量計' : '電池設為 ' + v + '%'); };
+$('netSel').value = String(netIdx); $('netSel').onchange = e => { netIdx = +e.target.value; store.set('net', String(netIdx)); toast('模擬網路：' + NETP[netIdx].n + (netIdx ? '（單程約 ' + NETP[netIdx].lat + ' ms ± ' + NETP[netIdx].jit + '）' : '')); };
+function layLabel() { $('bLay').textContent = '場地：' + sim.world.layout.name; }
+$('bLay').onclick = () => { sim.setLayout(sim.layoutKey === 'course' ? 'open' : 'course'); store.set('layout', sim.layoutKey); buildWorld(); layLabel(); camInit = false; };
+$('tlToggle').onclick = () => { $('tl').classList.toggle('mini'); };
+addEventListener('pointerdown', audioStart, { once: false });
+
+/* =============== 主迴圈 =============== */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  sim.step(dt);
+  syncCar(); updateTrails(); updateCamera(dt); renderer.render(scene, cam);
+  camTick(now); hud(now); audioUpdate();
+}
+buildWorld(); layLabel(); resize(); setView(view);
+sim.pico.ao = 1;
+startHost();
+requestAnimationFrame(frame);
+</script>
+</body></html>
